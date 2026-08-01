@@ -519,6 +519,7 @@ static void prv_default_settings(void) {
   settings.DigitalHour = true;
   settings.BackSize = 4;
   settings.BackLen = config.analogue_hand_b;
+  settings.ComplicationFontSizeAdj = 0;
 }
 
 // Quiet time icon handler
@@ -604,6 +605,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *icent_t = dict_find(iter, MESSAGE_KEY_InnerCentreSize);
   Tuple *back_t = dict_find(iter, MESSAGE_KEY_BackSize);
   Tuple *backlen_t = dict_find(iter, MESSAGE_KEY_BackLen);
+  Tuple *complication_font_size_adj_t = dict_find(iter, MESSAGE_KEY_ComplicationFontSizeAdj);
 
   if (fg_shape_t) {
     settings.ForegroundShape = fg_shape_t->value->int32 == 1;
@@ -740,6 +742,12 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     layer_mark_dirty(s_canvas_battery);
   }
 
+  if (complication_font_size_adj_t) {
+    settings.ComplicationFontSizeAdj = complication_font_size_adj_t->value->int32;
+    layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_canvas_battery);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
 
   if (bwthemeselect_t) {
           // Compare the string value received from the phone
@@ -1830,7 +1838,8 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
             fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
             FPoint battery_pos;
             
-            int font_size_battery = config.font_size_battery;
+            int font_size_battery = config.font_size_battery + settings.ComplicationFontSizeAdj;
+            int font_height_adj = -settings.ComplicationFontSizeAdj;
             
             int s_battery_level = battery_state_service_peek().charge_percent;
             fctx_begin_fill(&fctx);
@@ -1840,7 +1849,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
               if (settings.EnableBatteryLine) {
 
                   battery_pos.x = INT_TO_FIXED((bounds.size.w / 2));
-                  battery_pos.y = INT_TO_FIXED(config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_z);
+                  battery_pos.y = INT_TO_FIXED(config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_z + font_height_adj);
 
                   char BatterytoDraw[6];
                   snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
@@ -1867,7 +1876,8 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
             fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
             FPoint battery_pos;
             
-            int font_size_battery = config.font_size_battery;
+            int font_size_battery = config.font_size_battery + settings.ComplicationFontSizeAdj;
+            int font_height_adj = -settings.ComplicationFontSizeAdj;
             
             int s_battery_level = battery_state_service_peek().charge_percent;
             fctx_begin_fill(&fctx);
@@ -1877,7 +1887,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
               if (settings.EnableBatteryLine) {
 
                   battery_pos.x = INT_TO_FIXED((bounds.size.w / 2));
-                  battery_pos.y = INT_TO_FIXED((bounds.size.h / 2) + config.BatteryYOffset2 + config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_z);
+                  battery_pos.y = INT_TO_FIXED((bounds.size.h / 2) + config.BatteryYOffset2 + config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_z + font_height_adj);
 
                   char BatterytoDraw[6];
                   snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
@@ -1904,8 +1914,9 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
             fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
             FPoint battery_pos;
             
-            int font_size_battery = config.font_size_battery;
-            
+            int font_size_battery = config.font_size_battery + settings.ComplicationFontSizeAdj;
+            int font_height_adj = -settings.ComplicationFontSizeAdj;
+
             int s_battery_level = battery_state_service_peek().charge_percent;
             fctx_begin_fill(&fctx);
             fctx_set_text_em_height(&fctx, Date_Font, font_size_battery);
@@ -1914,7 +1925,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
               if (settings.EnableBatteryLine) {
 
                   battery_pos.x = INT_TO_FIXED((bounds.size.w / 4));
-                  battery_pos.y = INT_TO_FIXED((bounds.size.h / 4) + config.BatteryYOffset3 +config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_z);
+                  battery_pos.y = INT_TO_FIXED((bounds.size.h / 4) + config.BatteryYOffset3 +config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_z + font_height_adj);
 
                   char BatterytoDraw[6];
                   snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
@@ -1941,8 +1952,9 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
             fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
             FPoint battery_pos;
             
-            int font_size_battery = config.font_size_battery;
-            
+            int font_size_battery = config.font_size_battery + settings.ComplicationFontSizeAdj;
+            int font_height_adj = -settings.ComplicationFontSizeAdj;
+
             int s_battery_level = battery_state_service_peek().charge_percent;
             fctx_begin_fill(&fctx);
             fctx_set_text_em_height(&fctx, Date_Font, font_size_battery);
@@ -1951,7 +1963,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
               if (settings.EnableBatteryLine) {
 
                   battery_pos.x = INT_TO_FIXED((bounds.size.w*3 / 4));
-                  battery_pos.y = INT_TO_FIXED((bounds.size.h / 4) + config.BatteryYOffset3 +config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_z);
+                  battery_pos.y = INT_TO_FIXED((bounds.size.h / 4) + config.BatteryYOffset3 +config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_z + font_height_adj);
 
                   char BatterytoDraw[6];
                   snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
@@ -1992,7 +2004,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     FPoint weekday_pos;
     FPoint date_pos;
 
-    int font_size_date = config.font_size_date;
+    int font_size_date = config.font_size_date + settings.ComplicationFontSizeAdj;
    
     int xOffset = config.xOffset;
     int yOffset = config.yOffset;
@@ -2055,7 +2067,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     FPoint weekday_pos;
     FPoint date_pos;
 
-    int font_size_date = config.font_size_date;
+    int font_size_date = config.font_size_date + settings.ComplicationFontSizeAdj;
    
     int xOffset = config.xOffset;
     int yOffset = config.yOffset;
@@ -2121,7 +2133,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     FPoint weekday_pos;
     FPoint date_pos;
 
-    int font_size_date = config.font_size_date;
+    int font_size_date = config.font_size_date + settings.ComplicationFontSizeAdj;
 
     int xOffset = config.xOffset;
     int yOffset = config.yOffset;
@@ -2180,7 +2192,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     FPoint weekday_pos;
     FPoint date_pos;
 
-    int font_size_date = config.font_size_date;
+    int font_size_date = config.font_size_date + settings.ComplicationFontSizeAdj;
    
     int xOffset = config.xOffset;
     int yOffset = config.yOffset;
@@ -2240,7 +2252,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
           logo_pos.x = INT_TO_FIXED((bounds.size.w / 2));
           logo_pos.y = INT_TO_FIXED(config.LogoYOffset);
 
-            int font_size_logo = config.font_size_logo;
+            int font_size_logo = config.font_size_logo + settings.ComplicationFontSizeAdj;
             #ifdef PBL_PLATFORM_EMERY
               char logodraw[20];
             #elif defined (PBL_PLATFORM_GABBRO)
@@ -2308,7 +2320,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
           FPoint logo_pos;
           logo_pos.x = INT_TO_FIXED((bounds.size.w / 2));
           logo_pos.y = INT_TO_FIXED(config.LogoYOffset + config.LogoYOffset3);
-            int font_size_logo = config.font_size_logo;
+            int font_size_logo = config.font_size_logo + settings.ComplicationFontSizeAdj;
             char logodraw[20];
             snprintf(logodraw, sizeof(logodraw), "%s", settings.LogoText);
             char *line2 = NULL;
@@ -2345,7 +2357,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
           FPoint logo_pos;
           logo_pos.x = INT_TO_FIXED((bounds.size.w / 4));
           logo_pos.y = INT_TO_FIXED(bounds.size.h / 2 - config.LogoYOffset2/2);
-            int font_size_logo = config.font_size_logo;
+            int font_size_logo = config.font_size_logo + settings.ComplicationFontSizeAdj;
             char logodraw[20];
             snprintf(logodraw, sizeof(logodraw), "%s", settings.LogoText);
             char *line2 = NULL;
@@ -2381,7 +2393,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
           FPoint logo_pos;
           logo_pos.x = INT_TO_FIXED((bounds.size.w*3 / 4));
           logo_pos.y = INT_TO_FIXED(bounds.size.h / 2 - config.LogoYOffset2/2);
-            int font_size_logo = config.font_size_logo;
+            int font_size_logo = config.font_size_logo + settings.ComplicationFontSizeAdj;
             char logodraw[20];
             snprintf(logodraw, sizeof(logodraw), "%s", settings.LogoText);
             char *line2 = NULL;
@@ -2428,7 +2440,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
           strftime(local_ampm_string, sizeof(local_ampm_string), "%p", prv_tick_time);
    
             fctx_begin_fill(&fctx);
-            fctx_set_text_em_height(&fctx, Date_Font, config.font_size_battery);
+            fctx_set_text_em_height(&fctx, Date_Font, config.font_size_battery + settings.ComplicationFontSizeAdj);
                   fctx_set_offset(&fctx, ampm_pos);
                   fctx_draw_string(&fctx, local_ampm_string, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
                   fctx_end_fill(&fctx);
@@ -2446,7 +2458,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
           strftime(local_ampm_string, sizeof(local_ampm_string), "%p", prv_tick_time);
    
             fctx_begin_fill(&fctx);
-            fctx_set_text_em_height(&fctx, Date_Font, config.font_size_battery);
+            fctx_set_text_em_height(&fctx, Date_Font, config.font_size_battery + settings.ComplicationFontSizeAdj);
                   fctx_set_offset(&fctx, ampm_pos);
                   fctx_draw_string(&fctx, local_ampm_string, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
                   fctx_end_fill(&fctx);
@@ -2464,7 +2476,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
           strftime(local_ampm_string, sizeof(local_ampm_string), "%p", prv_tick_time);
    
             fctx_begin_fill(&fctx);
-            fctx_set_text_em_height(&fctx, Date_Font, config.font_size_battery);
+            fctx_set_text_em_height(&fctx, Date_Font, config.font_size_battery + settings.ComplicationFontSizeAdj);
                   fctx_set_offset(&fctx, ampm_pos);
                   fctx_draw_string(&fctx, local_ampm_string, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
                   fctx_end_fill(&fctx);
@@ -2482,7 +2494,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
           strftime(local_ampm_string, sizeof(local_ampm_string), "%p", prv_tick_time);
    
             fctx_begin_fill(&fctx);
-            fctx_set_text_em_height(&fctx, Date_Font, config.font_size_battery);
+            fctx_set_text_em_height(&fctx, Date_Font, config.font_size_battery + settings.ComplicationFontSizeAdj);
                   fctx_set_offset(&fctx, ampm_pos);
                   fctx_draw_string(&fctx, local_ampm_string, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
                   fctx_end_fill(&fctx);
