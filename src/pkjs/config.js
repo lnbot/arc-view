@@ -89,6 +89,17 @@ module.exports = [
         "defaultValue": true
       },
       {
+        "type": "slider",
+        "label": "Complication Font Size Adjustment",
+        "messageKey": "ComplicationFontSizeAdj",
+        "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
+        "defaultValue": 0,
+        "description": "Default = 0",
+        "min": -5,
+        "max": 10,
+        "step": 1
+      },
+      {
         "type": "toggle",
         "messageKey": "VibeOn",
         "label": "Vibrate on Bluetooth disconnect during Quiet Time",

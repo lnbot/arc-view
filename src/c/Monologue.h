@@ -90,4 +90,5 @@ typedef struct ClaySettings {
   bool BWShadowOn;
   bool ShadowOn;
   bool ForegroundShape;
+  int ComplicationFontSizeAdj;
 } __attribute__((__packed__)) ClaySettings;
