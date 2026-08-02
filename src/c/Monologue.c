@@ -29,11 +29,17 @@ static GFont
     #endif
     FontBTQTIcons;
 
+// Smooth interval for updating the minute hand
+// 4s interval is about right for Gabbro
+const int SMOOTH_INTERVAL_SEC = 4;
+const int SMOOTH_WAKEUP_COOKIE = 1;
+
 FFont* Date_Font;
 // Time and date variables
 static struct tm *prv_tick_time;
 static int current_date;
 static int s_weekday;
+static int seconds;
 static int minutes;
 static int hours;   //12h modulo
 static int s_hours; //24h version
@@ -441,6 +447,7 @@ static void prv_default_settings(void);
 static void prv_load_settings(void);
 static void prv_inbox_received_handler(DictionaryIterator *iter, void *context);
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed);
+static void wakeup_handler(int32_t wakeup_id, int32_t cookie);
 static void bg_update_proc(Layer *layer, GContext *ctx);
 //static void layer_update_proc_dial_digits_mask(Layer *layer, GContext * ctx);
 static void update_logo_date_battery_fctx_layer(Layer *layer, GContext * ctx);
@@ -520,6 +527,7 @@ static void prv_default_settings(void) {
   settings.BackSize = 4;
   settings.BackLen = config.analogue_hand_b;
   settings.ComplicationFontSizeAdj = 0;
+  settings.SmoothMinuteHand = false;
 }
 
 // Quiet time icon handler
@@ -606,6 +614,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *back_t = dict_find(iter, MESSAGE_KEY_BackSize);
   Tuple *backlen_t = dict_find(iter, MESSAGE_KEY_BackLen);
   Tuple *complication_font_size_adj_t = dict_find(iter, MESSAGE_KEY_ComplicationFontSizeAdj);
+  Tuple *smooth_minute_hand_t = dict_find(iter, MESSAGE_KEY_SmoothMinuteHand);
 
   if (fg_shape_t) {
     settings.ForegroundShape = fg_shape_t->value->int32 == 1;
@@ -746,6 +755,14 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     settings.ComplicationFontSizeAdj = complication_font_size_adj_t->value->int32;
     layer_mark_dirty(s_canvas_layer);
     layer_mark_dirty(s_canvas_battery);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
+
+  if (smooth_minute_hand_t) {
+    settings.SmoothMinuteHand = settings.DigitalHour && smooth_minute_hand_t->value->int32 != 0;
+    wakeup_schedule(time(NULL) + SMOOTH_INTERVAL_SEC, SMOOTH_WAKEUP_COOKIE, false);
+    layer_mark_dirty(s_bg_layer);
+    layer_mark_dirty(s_canvas_layer);
     layer_mark_dirty(s_date_battery_logo_layer);
   }
 
@@ -1038,31 +1055,48 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
 
 }
 
+static void wakeup_handler(int32_t wakeup_id, int32_t cookie) {
+  if (cookie == SMOOTH_WAKEUP_COOKIE) {
+    time_t tm = time(NULL);
+    tick_handler(localtime(&tm), SECOND_UNIT);
+  }
+}
+
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "tick_handler fired: %02d:%02d", tick_time->tm_hour, tick_time->tm_min);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "tick_handler fired: %02d:%02d:%02d", tick_time->tm_hour, tick_time->tm_min, tick_time->tm_sec);
 
-  time_t temp = time(NULL);
-  prv_tick_time = localtime(&temp);
+  time_t curr_time = time(NULL);
+  prv_tick_time = localtime(&curr_time);
+
+  bool minute_changed = units_changed & MINUTE_UNIT;
 
   // Update hour and minute hands and the date on minute change
-  if (units_changed & MINUTE_UNIT) {
+  if (minute_changed || (settings.SmoothMinuteHand && units_changed & SECOND_UNIT)) {
+    seconds = tick_time->tm_sec;
     minutes = tick_time->tm_min;
     hours = tick_time->tm_hour % 12;
     s_hours = tick_time->tm_hour;
     layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
+
+    if (minute_changed) {
+      layer_mark_dirty(s_date_battery_logo_layer);
+    }
     if (settings.EnableDate && tick_time->tm_mday != current_date) {
       current_date = tick_time->tm_mday;
       s_weekday = tick_time->tm_wday;
     }
+
+    if (settings.SmoothMinuteHand && (seconds + SMOOTH_INTERVAL_SEC) < 60) {
+      // Schedule a wakeup for smooth minute hand movement unless the next callback is a minute tick
+      wakeup_schedule(curr_time + SMOOTH_INTERVAL_SEC, SMOOTH_WAKEUP_COOKIE, false);
+    }
   }
-
-
 }
 
 ///analogue hand
 static void draw_line_hand(GContext *ctx, int angle, int length, int back_length, GColor color) {
+  const int TrigHalfAngle = TRIG_MAX_ANGLE / 2;
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
   GPoint origin_offset = GPoint(origin.x + config.hands_shadow, origin.y + config.hands_shadow);
   GPoint p1;
@@ -1071,23 +1105,23 @@ static void draw_line_hand(GContext *ctx, int angle, int length, int back_length
   GPoint p4;
   
   #ifdef PBL_ROUND
-      p1 = polar_to_point_offset(origin, angle + 180, back_length);
-      p2 = polar_to_point_offset(origin, angle, length);
-      p3 = polar_to_point_offset(origin_offset, angle + 180, back_length);
-      p4 = polar_to_point_offset(origin_offset, angle, length);
+      p1 = polar_to_point_offset_native(origin, angle + TrigHalfAngle, back_length);
+      p2 = polar_to_point_offset_native(origin, angle, length);
+      p3 = polar_to_point_offset_native(origin_offset, angle + TrigHalfAngle, back_length);
+      p4 = polar_to_point_offset_native(origin_offset, angle, length);
   #else
     if(settings.ForegroundShape){
-      p1 = polar_to_point_offset(origin, angle + 180, back_length);
-      p2 = polar_to_point_offset(origin, angle, length);
-      p3 = polar_to_point_offset(origin_offset, angle + 180, back_length);
-      p4 = polar_to_point_offset(origin_offset, angle, length);
+      p1 = polar_to_point_offset_native(origin, angle + TrigHalfAngle, back_length);
+      p2 = polar_to_point_offset_native(origin, angle, length);
+      p3 = polar_to_point_offset_native(origin_offset, angle + TrigHalfAngle, back_length);
+      p4 = polar_to_point_offset_native(origin_offset, angle, length);
     }
     else{
       GRect r = GRect(0, 0, bounds.size.w, bounds.size.h);
-      p1 = polar_to_point_offset(origin, angle + 180, back_length);
-      p2 = angle_to_rounded_rect_edge(origin, angle, bounds.size.w/2-10, bounds.size.h/2-10, config.corner_radius_secondshand);
-      p3 = polar_to_point_offset(origin_offset, angle + 180, back_length);
-      p4 = angle_to_rounded_rect_edge(origin_offset, angle, bounds.size.w/2-10, bounds.size.h/2-10, config.corner_radius_secondshand);
+      p1 = polar_to_point_offset_native(origin, angle + TrigHalfAngle, back_length);
+      p2 = angle_to_rounded_rect_edge_native(origin, angle, bounds.size.w/2-10, bounds.size.h/2-10, config.corner_radius_secondshand);
+      p3 = polar_to_point_offset_native(origin_offset, angle + TrigHalfAngle, back_length);
+      p4 = angle_to_rounded_rect_edge_native(origin_offset, angle, bounds.size.w/2-10, bounds.size.h/2-10, config.corner_radius_secondshand);
 
     }
   #endif
@@ -2686,8 +2720,8 @@ static void layer_update_proc_qt(Layer * layer, GContext * ctx){
 
 // Update procedure for the main canvas layer (hour & minute hands)
 static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx) {
-
- GRect bounds = layer_get_bounds(layer);
+  const int TrigQuarterAngle = TRIG_MAX_ANGLE / 4;
+  GRect bounds = layer_get_bounds(layer);
 
 //use these for live version
    minutes = prv_tick_time->tm_min;
@@ -2700,27 +2734,32 @@ static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx) {
     minutes = MINUTE;
   #endif
 
-  int minutes_angle = (360 * minutes / 60) - 90;
-  int hours_angle   = (360 * (s_hours % 12) / 12) + (minutes / 2) - 90;
+  // Using native trig angles since we're dealing with small fractions of degrees
+  int minutes_angle = (TRIG_MAX_ANGLE * minutes / 60) - TrigQuarterAngle;
+  int hours_angle   = (TRIG_MAX_ANGLE * (s_hours % 12) / 12) + (TRIG_MAX_ANGLE * minutes / 60 / 12) - TrigQuarterAngle;
 
-  int hand_angle = settings.DigitalHour ? minutes_angle : hours_angle;
+  if (settings.SmoothMinuteHand) {
+    minutes_angle += TRIG_MAX_ANGLE * seconds / 60 / 60;  // Sweep 1/60 of a circle over 60s
+  }
+
+  int hand_angle_native = settings.DigitalHour ? minutes_angle : hours_angle;
 
   #ifdef PBL_ROUND
-      draw_line_hand(ctx, hand_angle,
+      draw_line_hand(ctx, hand_angle_native,
           bounds.size.w/2 - config.analogue_hand_a,
           settings.BackLen,
           PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor));
       draw_hand_center(ctx, PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
   #else
       if(settings.ForegroundShape){
-          draw_line_hand(ctx, hand_angle,
+          draw_line_hand(ctx, hand_angle_native,
               bounds.size.w/2 - config.analogue_hand_a,
               settings.BackLen,
               PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor));
           draw_hand_center(ctx, PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
       }
       else{
-          draw_line_hand(ctx, hand_angle,
+          draw_line_hand(ctx, hand_angle_native,
               bounds.size.w/2 - config.analogue_hand_c,
               settings.BackLen,
               PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor));
@@ -2772,6 +2811,7 @@ static void prv_window_load(Window *window) {
   prv_tick_time = localtime(&temp);
   current_date = prv_tick_time->tm_mday;
   s_weekday = prv_tick_time->tm_wday;
+  seconds = prv_tick_time->tm_sec;
   minutes = prv_tick_time->tm_min;
   hours = prv_tick_time->tm_hour % 12;
   s_hours = prv_tick_time->tm_hour;
@@ -2794,8 +2834,13 @@ static void prv_window_load(Window *window) {
     .pebble_app_connection_handler = bluetooth_vibe_icon
   });
 
-     tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
-   
+  tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+
+  if (settings.SmoothMinuteHand) {
+    wakeup_service_subscribe(wakeup_handler);
+    wakeup_schedule(time(NULL) + SMOOTH_INTERVAL_SEC, SMOOTH_WAKEUP_COOKIE, false);
+  }
+
   //create layers
   s_bg_layer = layer_create(bounds);
   s_dial_layer = layer_create(bounds);
@@ -2832,6 +2877,7 @@ static void prv_window_unload(Window *window) {
   connection_service_unsubscribe();
   battery_state_service_unsubscribe();
   tick_timer_service_unsubscribe();
+  wakeup_cancel_all();
   layer_destroy(s_canvas_layer);
   layer_destroy(s_bg_layer);
   layer_destroy(s_dial_layer);

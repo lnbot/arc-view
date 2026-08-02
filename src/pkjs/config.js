@@ -33,6 +33,13 @@ module.exports = [
       },
       {
         "type": "toggle",
+        "label": "Smooth Minute Hand",
+        "messageKey": "SmoothMinuteHand",
+        "description": "Smoother minute hand movement at the expense of battery life",
+        "defaultValue": false
+      },
+      {
+        "type": "toggle",
         "label": "Add leading zero to 12h time",
         "messageKey": "AddZero12h",
         "defaultValue": false

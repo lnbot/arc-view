@@ -46,6 +46,7 @@
       "HandThickness",
       "CentreSize",
       "DigitalHour",
+      "SmoothMinuteHand",
       "BackSize",
       "BackLen",
       "InnerCentreSize",
@@ -55,6 +56,7 @@
       "SecondsVisibleTime",
       "showMinorTick",
       "showMajorTick",
+      "ComplicationFontSizeAdj",
       "EnableDate",
       "EnableBattery",
       "EnableBatteryLine",
@@ -88,8 +90,7 @@
       "BWShadowOn",
       "Font",
       "VibeOn",
-      "ForegroundShape",
-      "ComplicationFontSizeAdj"
+      "ForegroundShape"
     ],
     "resources": {
       "media": [

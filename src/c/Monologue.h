@@ -55,6 +55,7 @@ typedef struct ClaySettings {
   bool showMinorTick;
   bool showMajorTick;
   bool DigitalHour;
+  bool SmoothMinuteHand;
 //  bool EnablePebbleLogo;
 //  bool EnableWatchModel;
 //  bool DigitalWatch;
