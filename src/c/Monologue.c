@@ -111,10 +111,18 @@ typedef struct {
   int tick_inset_outer;
   int SecondsCentreOuterRadius;
   int SecondsCentreInnerRadius;
+  int ComplicationBorderAdj;
+  int ComplicationDistanceAdj;
   GRect dial_digits_mask_a[1];
   GRect dial_digits_mask_b[1];
   GRect dial_digits_mask_c[1];
 } UIConfig;
+
+#ifdef PBL_PLATFORM_GABBRO
+#define RESOURCE_ID_FONT_DRIPICONS_X RESOURCE_ID_FONT_DRIPICONS_18
+#else
+#define RESOURCE_ID_FONT_DRIPICONS_X RESOURCE_ID_FONT_DRIPICONS_16
+#endif
 
 #ifdef PBL_PLATFORM_EMERY
 static const UIConfig config = {
@@ -181,13 +189,15 @@ static const UIConfig config = {
 .SecondsCentreInnerRadius = 2,
 .dial_digits_mask_a = {{{100-15,23},{39,7}}},
 .dial_digits_mask_b = {{{100-19,0},{39,27}}},
-.dial_digits_mask_c = {{{100-15,228-27},{31,27}}}
+.dial_digits_mask_c = {{{100-15,228-27},{31,27}}},
+.ComplicationBorderAdj = 4,
+.ComplicationDistanceAdj = 6
 };
 #elif defined(PBL_PLATFORM_GABBRO)
 static const UIConfig config = {
 .BottomXPosition = 46+30,
-.DateBottomYPosition = 168+22+3,
-.BTQTBottomYPosition = 168+22+3,
+.DateBottomYPosition = 178,
+.BTQTBottomYPosition = 178,
 .LeftxPosition = 16+2,
 .xOffset = 22,
 .yOffset = -8,
@@ -213,7 +223,7 @@ static const UIConfig config = {
 .LogoYOffset = 69+1+1,
 .LogoYOffset2 = -8,
 .LogoYOffset3 = -8+130,
-.font_size_digits = 46,
+.font_size_digits = 44,
 .font_size_battery = 14,
 .font_size_date = 12,
 .font_size_logo = 10,
@@ -240,7 +250,9 @@ static const UIConfig config = {
 .SecondsCentreInnerRadius = 3,
 .dial_digits_mask_a = {{{130-15,23-2},{39,7+2}}},
 .dial_digits_mask_b = {{{130-19,0},{39,27}}},
-.dial_digits_mask_c = {{{130-15,260-27},{31,27}}}
+.dial_digits_mask_c = {{{130-15,260-27},{31,27}}},
+.ComplicationBorderAdj = 2,
+.ComplicationDistanceAdj = 2
 };
 #elif defined(PBL_BW)
 static const UIConfig config = {
@@ -307,7 +319,9 @@ static const UIConfig config = {
 .SecondsCentreInnerRadius = 1,
 .dial_digits_mask_a = {{{72-14,22},{36,7}}},
 .dial_digits_mask_b = {{{72-18,0},{36,26}}},
-.dial_digits_mask_c = {{{72-13,168-26},{28,26}}}
+.dial_digits_mask_c = {{{72-13,168-26},{28,26}}},
+.ComplicationBorderAdj = 0,
+.ComplicationDistanceAdj = 0
 };
 #elif defined(PBL_ROUND)
 static const UIConfig config = {
@@ -366,7 +380,9 @@ static const UIConfig config = {
 .SecondsCentreInnerRadius = 1,
 .dial_digits_mask_a = {{{90-14,22},{36,7}}},
 .dial_digits_mask_b = {{{90-18,0},{36,26}}},
-.dial_digits_mask_c = {{{90-13,180-26},{28,26}}}
+.dial_digits_mask_c = {{{90-13,180-26},{28,26}}},
+.ComplicationBorderAdj = -1,
+.ComplicationDistanceAdj = -1
 };
 #else // Default for other platforms
 static const UIConfig config = {
@@ -433,7 +449,9 @@ static const UIConfig config = {
 .SecondsCentreInnerRadius = 1,
 .dial_digits_mask_a = {{{72-14,22},{36,7}}},
 .dial_digits_mask_b = {{{72-18,0},{36,26}}},
-.dial_digits_mask_c = {{{72-13,168-26},{28,26}}}
+.dial_digits_mask_c = {{{72-13,168-26},{28,26}}},
+.ComplicationBorderAdj = 2,
+.ComplicationDistanceAdj = 2
 };
 #endif
 
@@ -480,8 +498,10 @@ static void prv_default_settings(void) {
   settings.EnableBattery = true;
   settings.EnableBatteryLine = true;
   settings.EnableLogo = true;
-  snprintf(settings.LogoText, sizeof(settings.LogoText), "%s", "monologue");
+  snprintf(settings.LogoText, sizeof(settings.LogoText), "%s", "pebble");
   settings.BackgroundColor1 = GColorWhite;
+  settings.ComplicationBorderColor = GColorLightGray;
+  settings.ComplicationShadowColor = GColorWhite;
   settings.MinuteHandShadowColor = GColorBabyBlueEyes;
   settings.TextColor1 = GColorWhite;
   settings.MinorTickColor = GColorBabyBlueEyes;
@@ -578,18 +598,20 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *bwthemeselect_t = dict_find(iter, MESSAGE_KEY_BWThemeSelect);
   Tuple *themeselect_t = dict_find(iter, MESSAGE_KEY_ThemeSelect);
   Tuple *bg_color1_t = dict_find(iter, MESSAGE_KEY_BackgroundColor1);
+  Tuple *comp_border_color_t = dict_find(iter, MESSAGE_KEY_ComplicationBorderColor);
+  Tuple *comp_shadow_color_t = dict_find(iter, MESSAGE_KEY_ComplicationShadowColor);
   Tuple *bg_color2_t = dict_find(iter, MESSAGE_KEY_MinuteHandShadowColor);
-  Tuple *text_color1_t = dict_find(iter, MESSAGE_KEY_TextColor1);
+  //Tuple *text_color1_t = dict_find(iter, MESSAGE_KEY_TextColor1);
   Tuple *text_color2_t = dict_find(iter, MESSAGE_KEY_MinorTickColor);
-  Tuple *text_color3_t = dict_find(iter, MESSAGE_KEY_TextColor3);
+  //Tuple *text_color3_t = dict_find(iter, MESSAGE_KEY_TextColor3);
   Tuple *date_color_t = dict_find(iter, MESSAGE_KEY_DateColor);
   Tuple *bwdate_color_t = dict_find(iter, MESSAGE_KEY_BWDateColor);
   Tuple *hours_color_t = dict_find(iter, MESSAGE_KEY_HourDigitsColor);
-  Tuple *hours_border_t = dict_find(iter, MESSAGE_KEY_HoursHandBorderColor);
+  //Tuple *hours_border_t = dict_find(iter, MESSAGE_KEY_HoursHandBorderColor);
   Tuple *minutes_color_t = dict_find(iter, MESSAGE_KEY_MinutesHandColor);
-  Tuple *minutes_border_t = dict_find(iter, MESSAGE_KEY_MinutesHandBorderColor);
+  //Tuple *minutes_border_t = dict_find(iter, MESSAGE_KEY_MinutesHandBorderColor);
   Tuple *tick_color_t = dict_find(iter, MESSAGE_KEY_MajorTickColor);
-  Tuple *seconds_color_t = dict_find(iter, MESSAGE_KEY_SecondsHandColor);
+  //Tuple *seconds_color_t = dict_find(iter, MESSAGE_KEY_SecondsHandColor);
   Tuple *battery_line_color_t = dict_find(iter, MESSAGE_KEY_BatteryLineColor);
   Tuple *bwbg_color1_t = dict_find(iter, MESSAGE_KEY_BWBackgroundColor1);
   Tuple *bwbg_color2_t = dict_find(iter, MESSAGE_KEY_BWMinuteHandShadowColor);
@@ -882,6 +904,8 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
                         settings.MinuteHandShadowColor = GColorWhite;
                         }
                     settings.BackgroundColor1 = GColorWhite;
+                    settings.ComplicationBorderColor = GColorLightGray;
+                    settings.ComplicationShadowColor = GColorLightGray;
                     settings.MinorTickColor = GColorBabyBlueEyes;
                     settings.DateColor = GColorDarkGray;
                     settings.HourDigitsColor = GColorCobaltBlue;
@@ -895,6 +919,8 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
               // Set the theme and other settings for "bl"
 
                     settings.BackgroundColor1 = GColorBlack;
+                    settings.ComplicationBorderColor = GColorBlack;
+                    settings.ComplicationShadowColor = GColorBlack;
                     if (shadowon_t) {
                       settings.ShadowOn = shadowon_t->value->int32 == 1;
                     }
@@ -917,6 +943,8 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
               // Set the theme and other settings for "bl"
 
                     settings.BackgroundColor1 = GColorDukeBlue;
+                    settings.ComplicationBorderColor = GColorDukeBlue;
+                    settings.ComplicationShadowColor = GColorDukeBlue;
                     if (shadowon_t) {
                       settings.ShadowOn = shadowon_t->value->int32 == 1;
                     }
@@ -939,6 +967,8 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
               // Set the theme and other settings for "bl"
 
                     settings.BackgroundColor1 = GColorPurple;
+                    settings.ComplicationBorderColor = GColorPurple;
+                    settings.ComplicationShadowColor = GColorPurple;
                     if (shadowon_t) {
                       settings.ShadowOn = shadowon_t->value->int32 == 1;
                     }
@@ -961,6 +991,8 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
               // Set the theme and other settings for "gr"
 
                     settings.BackgroundColor1 = GColorBlack;
+                    settings.ComplicationBorderColor = GColorBlack;
+                    settings.ComplicationShadowColor = GColorBlack;
                     if (shadowon_t) {
                       settings.ShadowOn = shadowon_t->value->int32 == 1;
                     }
@@ -983,6 +1015,16 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
               // Set the theme for "cu" and handle custom colors
                   if (bg_color1_t) {
                     settings.BackgroundColor1 = GColorFromHEX(bg_color1_t->value->int32);
+                    settings_changed = true;
+                  }
+
+                  if (comp_border_color_t) {
+                    settings.ComplicationBorderColor = GColorFromHEX(comp_border_color_t->value->int32);
+                    settings_changed = true;
+                  }
+
+                  if (comp_shadow_color_t) {
+                    settings.ComplicationShadowColor = GColorFromHEX(comp_shadow_color_t->value->int32);
                     settings_changed = true;
                   }
 
@@ -1134,7 +1176,6 @@ static void draw_line_hand(GContext *ctx, int angle, int length, int back_length
       p4 = polar_to_point_offset_native(origin_offset, angle, length);
     }
     else{
-      GRect r = GRect(0, 0, bounds.size.w, bounds.size.h);
       p1 = polar_to_point_offset_native(origin, angle + TRIG_HALF_ANGLE, back_length);
       p2 = angle_to_rounded_rect_edge_native(origin, angle, bounds.size.w/2-10, bounds.size.h/2-10, config.corner_radius_secondshand);
       p3 = polar_to_point_offset_native(origin_offset, angle + TRIG_HALF_ANGLE, back_length);
@@ -1788,19 +1829,45 @@ static void layer_update_proc_battery_line(Layer *layer, GContext *ctx) {
 
 #else   //use FCTX to antialise the digits better on all colour watches, still refers to B&W in case I change my mind later on non-APLITE watches
 
-static FPoint relative_gpoint_to_fpoint(GPoint *gpoint) {
-  return 
-    (FPoint){ .x = INT_TO_FIXED(bounds.size.w / 2 + gpoint->x),
-              .y = INT_TO_FIXED(bounds.size.h / 2 + gpoint->y) };
+static FPoint gpoint_to_fpoint(GPoint *gpoint) {
+  return
+    (FPoint){ .x = INT_TO_FIXED(gpoint->x),
+              .y = INT_TO_FIXED(gpoint->y) };
+}
+
+static GPoint relative_gpoint_to_absolute(GPoint *gpoint) {
+  return
+    (GPoint){ .x = bounds.size.w / 2 + gpoint->x,
+              .y = bounds.size.h / 2 + gpoint->y };
+}
+
+static void draw_complication_border(FContext *fctxp, GPoint center) {
+  if (settings.ComplicationBorderColor.argb == settings.BackgroundColor1.argb)
+    return;
+
+  int radius = 5 * bounds.size.w / 32 + config.ComplicationBorderAdj;
+  graphics_context_set_antialiased(fctxp->gctx, true);
+  graphics_context_set_stroke_color(fctxp->gctx, settings.ComplicationBorderColor);
+  graphics_context_set_stroke_width(fctxp->gctx, 1);
+  graphics_draw_circle(fctxp->gctx, center, radius);
+
+  if (settings.ShadowOn && settings.ComplicationShadowColor.argb != settings.BackgroundColor1.argb) {
+    GRect shadow_rect = GRect(center.x - radius, center.y - radius + 1, 2 * radius, 2 * radius);
+    graphics_context_set_stroke_color(fctxp->gctx, settings.ComplicationShadowColor);
+    graphics_draw_arc(fctxp->gctx, shadow_rect, GOvalScaleModeFitCircle, TRIG_QUARTER_ANGLE, TRIG_HALF_ANGLE + TRIG_QUARTER_ANGLE);
+  }
 }
 
 static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
   fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
-  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4);
-  FPoint hour_pos = relative_gpoint_to_fpoint(&rel_pos);
+  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj);
+  GPoint abs_pos = relative_gpoint_to_absolute(&rel_pos);
+  FPoint hour_pos = gpoint_to_fpoint(&abs_pos);
+
+  draw_complication_border(fctxp, abs_pos);
 
   char mindraw[3];
-      snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
+  snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
 
   int hourdraw;
     char hournow[4];
@@ -1831,8 +1898,11 @@ static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
 static void render_ampm_fctx(FContext *fctxp, int angle_native) {
   fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
 
-  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4);
-  FPoint ampm_pos = relative_gpoint_to_fpoint(&rel_pos);
+  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj);
+  GPoint abs_pos = relative_gpoint_to_absolute(&rel_pos);
+  FPoint ampm_pos = gpoint_to_fpoint(&abs_pos);
+
+  draw_complication_border(fctxp, abs_pos);
 
   char local_ampm_string[5];
   strftime(local_ampm_string, sizeof(local_ampm_string), "%p", prv_tick_time);
@@ -1844,7 +1914,7 @@ static void render_ampm_fctx(FContext *fctxp, int angle_native) {
         fctx_end_fill(fctxp);
 }
 
-static void render_logo_fctx(FContext *fctxp, int angle_native) {
+static void render_logo_fctx(FContext *fctxp, FPoint render_pos) {
   #ifdef PBL_PLATFORM_EMERY
     #define LOGO_WRAP_AT 8
   #elif defined (PBL_PLATFORM_GABBRO)
@@ -1857,10 +1927,7 @@ static void render_logo_fctx(FContext *fctxp, int angle_native) {
   const int logo_line_spacing = 2;
   fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
 
-  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4);
-  FPoint logo_pos = relative_gpoint_to_fpoint(&rel_pos);
-
-  logo_pos.y += INT_TO_FIXED(logo_line_spacing + logo_top_margin);
+  render_pos.y += INT_TO_FIXED(logo_line_spacing + logo_top_margin);
   int font_size_logo = config.font_size_logo + settings.ComplicationFontSizeAdj;
   char logodraw[20];
 
@@ -1876,50 +1943,62 @@ static void render_logo_fctx(FContext *fctxp, int angle_native) {
   if (line2) {
       fctx_begin_fill(fctxp);
       fctx_set_text_em_height(fctxp, Date_Font, font_size_logo);
-      fctx_set_offset(fctxp, logo_pos);
+      fctx_set_offset(fctxp, render_pos);
       fctx_draw_string(fctxp, logodraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
       fctx_end_fill(fctxp);
-      logo_pos.y += INT_TO_FIXED(font_size_logo + logo_line_spacing);
+      render_pos.y += INT_TO_FIXED(font_size_logo + logo_line_spacing);
       fctx_begin_fill(fctxp);
       fctx_set_text_em_height(fctxp, Date_Font, font_size_logo);
-      fctx_set_offset(fctxp, logo_pos);
+      fctx_set_offset(fctxp, render_pos);
       fctx_draw_string(fctxp, line2, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
       fctx_end_fill(fctxp);
   } else {
       fctx_begin_fill(fctxp);
       fctx_set_text_em_height(fctxp, Date_Font, font_size_logo);
-      fctx_set_offset(fctxp, logo_pos);
+      fctx_set_offset(fctxp, render_pos);
       fctx_draw_string(fctxp, logodraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
       fctx_end_fill(fctxp);
   }
 }
 
-static void render_battery_pct_fctx(FContext *fctxp, int angle_native) {
+static void render_battery_pct_fctx(FContext *fctxp, FPoint render_pos) {
   const int battery_line_offset = 2;
   const int battery_pct_offset = 2;
 
   fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
 
-  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4);
-  FPoint battery_pos = relative_gpoint_to_fpoint(&rel_pos);
-  
   int font_size_battery = config.font_size_battery + settings.ComplicationFontSizeAdj;
-  int font_height_adj = -settings.ComplicationFontSizeAdj;
   
   int s_battery_level = battery_state_service_peek().charge_percent;
   fctx_begin_fill(fctxp);
   fctx_set_text_em_height(fctxp, Date_Font, font_size_battery);
 
-  battery_pos.y -= battery_pct_offset;
+  render_pos.y -= battery_pct_offset;
   if (settings.EnableBatteryLine)
-    battery_pos.y -= battery_line_offset;
+    render_pos.y -= battery_line_offset;
 
   char BatterytoDraw[6];
   snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
 
-  fctx_set_offset(fctxp, battery_pos);
+  fctx_set_offset(fctxp, render_pos);
   fctx_draw_string(fctxp, BatterytoDraw, Date_Font, GTextAlignmentCenter, FTextAnchorBottom);
   fctx_end_fill(fctxp);
+}
+
+static void render_logo_battery_fctx(FContext *fctxp, int angle_native) {
+  FPoint render_pos;
+  if (settings.EnableBattery || settings.EnableLogo || settings.EnableBatteryLine) {
+    GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj);
+    GPoint abs_pos = relative_gpoint_to_absolute(&rel_pos);
+    render_pos = gpoint_to_fpoint(&abs_pos);
+
+    draw_complication_border(fctxp, abs_pos);
+  }
+
+  if (settings.EnableBattery)
+    render_battery_pct_fctx(fctxp, render_pos);
+  if (settings.EnableLogo)
+    render_logo_fctx(fctxp, render_pos);
 }
 
 static void render_date_fctx(FContext *fctxp, int angle_native) {
@@ -1928,9 +2007,12 @@ static void render_date_fctx(FContext *fctxp, int angle_native) {
   minutes = prv_tick_time->tm_min;
   hours = prv_tick_time->tm_hour % 12;
 
-  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4);
-  FPoint weekday_pos = relative_gpoint_to_fpoint(&rel_pos);
+  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj);
+  GPoint abs_pos = relative_gpoint_to_absolute(&rel_pos);
+  FPoint weekday_pos = gpoint_to_fpoint(&abs_pos);
   FPoint date_pos = weekday_pos;
+
+  draw_complication_border(fctxp, abs_pos);
 
   int font_size_date = config.font_size_date + settings.ComplicationFontSizeAdj;
 
@@ -1981,7 +2063,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
 
   char* compSettings[] = { settings.PosTop, settings.PosRight, settings.PosBottom, settings.PosLeft, NULL };
   for (char** setting = compSettings;
-      setting && *setting;
+      *setting;
       curr_angle += TRIG_QUARTER_ANGLE, setting++) {
 
     char* currSetting = *setting;
@@ -1989,10 +2071,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     if (strcmp(currSetting, "hr") == 0) {
       render_hour_digits_fctx(&fctx, curr_angle);
     } else if(strcmp(currSetting, "lo") == 0) {
-      if (settings.EnableBattery)
-        render_battery_pct_fctx(&fctx, curr_angle);
-      if (settings.EnableLogo)
-        render_logo_fctx(&fctx, curr_angle);
+      render_logo_battery_fctx(&fctx, curr_angle);
     } else if (strcmp(currSetting, "dt") == 0) {
       if (settings.EnableDate)
         render_date_fctx(&fctx, curr_angle);
@@ -2007,7 +2086,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
 
 static void render_battery_line(GContext *ctx, int angle_native, int s_battery_level) {
   int width_rect = (s_battery_level * config.battery_line) / 100;
-  GPoint line_center = polar_to_point_native(angle_native, bounds.size.w/4);
+  GPoint line_center = polar_to_point_native(angle_native, bounds.size.w/4 + config.ComplicationDistanceAdj);
   line_center.x += bounds.size.w / 2;
   line_center.y += bounds.size.h / 2;
 
@@ -2031,7 +2110,7 @@ static void layer_update_proc_battery_line(Layer *layer, GContext *ctx) {
   // Draw battery line
   char* compSettings[] = { settings.PosTop, settings.PosRight, settings.PosBottom, settings.PosLeft, NULL };
   for (char** setting = compSettings;
-      setting && *setting;
+      *setting;
       curr_angle += TRIG_QUARTER_ANGLE, setting++) {
 
     char* currSetting = *setting;
@@ -2048,7 +2127,6 @@ static void layer_update_proc_battery_line(Layer *layer, GContext *ctx) {
 
 //Update procedure for the Bluetooth Icon (shows when disconnected) layer
 static void layer_update_proc_bt(Layer * layer, GContext * ctx){
-  GRect bounds = layer_get_bounds(layer);
    minutes = prv_tick_time->tm_min;
    hours = prv_tick_time->tm_hour % 12;
 
@@ -2063,7 +2141,7 @@ static void layer_update_proc_bt(Layer * layer, GContext * ctx){
 
         // Bottom position
       
-      #ifdef PBL_BW 
+      #ifdef PBL_BW
               xPosition = config.BottomXPosition + 2;
               yPosition = config.BTQTBottomYPosition;
               textboxwidth = config.ShadowAndMaskWidth/2;
@@ -2108,7 +2186,6 @@ static void layer_update_proc_bt(Layer * layer, GContext * ctx){
 //Update procedure for the QT Icon layer (shows when Quiet time is active)
 static void layer_update_proc_qt(Layer * layer, GContext * ctx){
 
-  GRect bounds = layer_get_bounds(layer);
    minutes = prv_tick_time->tm_min;
    hours = prv_tick_time->tm_hour % 12;
 
@@ -2264,15 +2341,16 @@ static void prv_window_load(Window *window) {
   bounds = layer_get_bounds(window_layer);
 
   // Load fctx ffonts
-    Date_Font =  ffont_create_from_resource(RESOURCE_ID_FONT_DATE_FCTX);
-    FontBTQTIcons = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DRIPICONS_16));
-    //non-fctx custom fonts for B&W screens
-    #ifdef PBL_BW 
-    FontDate = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DATE_9));
-    FontBattery = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DATE_10));
-    FontLogo = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DATE_8));
-    FontHour = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DATE_24));
-    #endif
+  Date_Font =  ffont_create_from_resource(RESOURCE_ID_FONT_DATE_FCTX);
+  FontBTQTIcons = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DRIPICONS_X));
+  //non-fctx custom fonts for B&W screens
+  #ifdef PBL_BW
+  FontDate = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DATE_9));
+  FontBattery = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DATE_10));
+  FontLogo = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DATE_8));
+  FontHour = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DATE_24));
+  #endif
+
   // Subscribe to the connection service to get Bluetooth status updates.
   connection_service_subscribe((ConnectionHandlers){
     .pebble_app_connection_handler = bluetooth_vibe_icon

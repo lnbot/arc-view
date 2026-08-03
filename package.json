@@ -64,6 +64,8 @@
       "EnableLogo",
       "LogoText",
       "BackgroundColor1",
+      "ComplicationBorderColor",
+      "ComplicationShadowColor",
       "MinuteHandShadowColor",
       "BWMinuteHandShadowColor",
       "MajorTickColor",
@@ -155,7 +157,21 @@
           "file": "fonts/dripicons-v2.ttf",
           "characterRegex": "[z]",
           "name": "FONT_DRIPICONS_16",
-          "targetPlatforms": null,
+          "targetPlatforms": [
+            "aplite",
+            "diorite",
+            "flint",
+            "basalt",
+            "chalk",
+            "emery"
+          ],
+          "type": "font"
+        },
+        {
+          "file": "fonts/dripicons-v2.ttf",
+          "characterRegex": "[z]",
+          "name": "FONT_DRIPICONS_18",
+          "targetPlatforms": [ "gabbro" ],
           "type": "font"
         },
         {
