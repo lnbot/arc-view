@@ -1,6 +1,9 @@
 #pragma once
 #include <pebble.h>
 
+#define TRIG_QUARTER_ANGLE (TRIG_MAX_ANGLE / 4)
+#define TRIG_HALF_ANGLE (TRIG_MAX_ANGLE / 2)
+
 uint32_t two_point_distance(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
 uint32_t isqrt(uint32_t n);
 GPoint polar_to_point(int angle, int distance);

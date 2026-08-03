@@ -1,4 +1,5 @@
 #include <pebble.h>
+#include "MathUtils.h"
 
 // Quick integer square root.
 uint32_t isqrt(uint32_t n) {
@@ -35,9 +36,8 @@ GPoint add_points(GPoint a, GPoint b) {
 // Converts an angle and a distance to a cartesian point.
 GPoint polar_to_point_native(int angle_native, int distance) {
   // Use to get a rounded result
-  const int TrigHalfMaxAngle = TRIG_MAX_ANGLE / 2;
-  int x = (distance * cos_lookup(angle_native) + TrigHalfMaxAngle) / TRIG_MAX_ANGLE;
-  int y = (distance * sin_lookup(angle_native) + TrigHalfMaxAngle) / TRIG_MAX_ANGLE;
+  int x = (distance * cos_lookup(angle_native) + TRIG_HALF_ANGLE) / TRIG_MAX_ANGLE;
+  int y = (distance * sin_lookup(angle_native) + TRIG_HALF_ANGLE) / TRIG_MAX_ANGLE;
   return GPoint(x, y);
 }
 
