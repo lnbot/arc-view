@@ -76,10 +76,10 @@ module.exports = [
       {
          "type": "input",
          "messageKey": "LogoText",
-         "defaultValue": "monologue",
+         "defaultValue": "pebble",
          "label": "Custom Logo Text",
          "attributes": {
-           "placeholder": "monologue"
+           "placeholder": "pebble"
          }
       },
       {
@@ -431,6 +431,20 @@ module.exports = [
         "type": "color",
         "label": "Background Colour",
         "messageKey": "BackgroundColor1",
+        "defaultValue": "FFFFFF"
+      },
+      {
+        "type": "color",
+        "label": "Complication Border Color",
+        "messageKey": "ComplicationBorderColor",
+        "description": "Set to the background color to disable border",
+        "defaultValue": "AAAAAA"
+      },
+      {
+        "type": "color",
+        "label": "Complication Shadow Color",
+        "messageKey": "ComplicationShadowColor",
+        "description": "Enabled with minute hand shadow switch",
         "defaultValue": "FFFFFF"
       },
       {

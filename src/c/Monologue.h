@@ -70,6 +70,8 @@ typedef struct ClaySettings {
   char BWThemeSelect[4];
   char ThemeSelect[4];
   GColor BackgroundColor1;
+  GColor ComplicationBorderColor;
+  GColor ComplicationShadowColor;
   GColor MinuteHandShadowColor;
   GColor TextColor1;
   GColor MinorTickColor;
