@@ -30,8 +30,6 @@ static GFont
     FontBTQTIcons;
 
 // Smooth interval for updating the minute hand
-// 4s interval is about right for Gabbro
-const int SMOOTH_INTERVAL_SEC = 4;
 const int SMOOTH_WAKEUP_COOKIE = 1;
 
 FFont* Date_Font;
@@ -43,6 +41,7 @@ static int seconds;
 static int minutes;
 static int hours;   //12h modulo
 static int s_hours; //24h version
+static int hand_angle_native;
 
 static ClaySettings settings;
 
@@ -458,6 +457,7 @@ static void layer_update_proc_qt(Layer *layer, GContext *ctx);
 static void layer_update_proc_bt(Layer *layer, GContext *ctx);
 // static void draw_fancy_hand_hour(GContext *ctx, int angle, int length, GColor fill_color, GColor border_color);
 // static void draw_fancy_hand_min(GContext *ctx, int angle, int length, GColor fill_color, GColor border_color);
+static int calculate_hand_angle(struct tm *tick_time);
 static void draw_line_hand(GContext *ctx, int angle, int length, int back_length, GColor color);
 //static void draw_center(GContext *ctx, GColor minutes_border, GColor minutes_color);
 static void draw_hand_center(GContext *ctx, GColor outer_color, GColor inner_color);
@@ -528,6 +528,8 @@ static void prv_default_settings(void) {
   settings.BackLen = config.analogue_hand_b;
   settings.ComplicationFontSizeAdj = 0;
   settings.SmoothMinuteHand = false;
+  settings.MinuteHandUpdateIntervalSec = 60;
+  settings.OrbitComplications = false;
 }
 
 // Quiet time icon handler
@@ -614,7 +616,8 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *back_t = dict_find(iter, MESSAGE_KEY_BackSize);
   Tuple *backlen_t = dict_find(iter, MESSAGE_KEY_BackLen);
   Tuple *complication_font_size_adj_t = dict_find(iter, MESSAGE_KEY_ComplicationFontSizeAdj);
-  Tuple *smooth_minute_hand_t = dict_find(iter, MESSAGE_KEY_SmoothMinuteHand);
+  Tuple *minute_hand_updates_per_min_t = dict_find(iter, MESSAGE_KEY_MinuteHandUpdatesPerMin);
+  Tuple *orbit_complications_t = dict_find(iter, MESSAGE_KEY_OrbitComplications);
 
   if (fg_shape_t) {
     settings.ForegroundShape = fg_shape_t->value->int32 == 1;
@@ -758,11 +761,24 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     layer_mark_dirty(s_date_battery_logo_layer);
   }
 
-  if (smooth_minute_hand_t) {
-    settings.SmoothMinuteHand = settings.DigitalHour && smooth_minute_hand_t->value->int32 != 0;
-    wakeup_schedule(time(NULL) + SMOOTH_INTERVAL_SEC, SMOOTH_WAKEUP_COOKIE, false);
+  if (minute_hand_updates_per_min_t) {
+    int updates = minute_hand_updates_per_min_t->value->int32;
+    settings.SmoothMinuteHand = settings.DigitalHour && updates > 1;
+    settings.MinuteHandUpdateIntervalSec = (60 + updates / 2) / updates;
+
+    if (settings.SmoothMinuteHand) {
+      wakeup_schedule(time(NULL) + settings.MinuteHandUpdateIntervalSec, SMOOTH_WAKEUP_COOKIE, false);
+    }
+
     layer_mark_dirty(s_bg_layer);
     layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
+
+  if (orbit_complications_t) {
+    settings.OrbitComplications = orbit_complications_t->value->int32 == 1;
+    layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_canvas_battery);
     layer_mark_dirty(s_date_battery_logo_layer);
   }
 
@@ -1077,6 +1093,8 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
     minutes = tick_time->tm_min;
     hours = tick_time->tm_hour % 12;
     s_hours = tick_time->tm_hour;
+    hand_angle_native = calculate_hand_angle(prv_tick_time);
+
     layer_mark_dirty(s_canvas_layer);
 
     if (minute_changed) {
@@ -1087,16 +1105,15 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
       s_weekday = tick_time->tm_wday;
     }
 
-    if (settings.SmoothMinuteHand && (seconds + SMOOTH_INTERVAL_SEC) < 60) {
+    if (settings.SmoothMinuteHand && (seconds + settings.MinuteHandUpdateIntervalSec) < 60) {
       // Schedule a wakeup for smooth minute hand movement unless the next callback is a minute tick
-      wakeup_schedule(curr_time + SMOOTH_INTERVAL_SEC, SMOOTH_WAKEUP_COOKIE, false);
+      wakeup_schedule(curr_time + settings.MinuteHandUpdateIntervalSec, SMOOTH_WAKEUP_COOKIE, false);
     }
   }
 }
 
 ///analogue hand
 static void draw_line_hand(GContext *ctx, int angle, int length, int back_length, GColor color) {
-  const int TrigHalfAngle = TRIG_MAX_ANGLE / 2;
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
   GPoint origin_offset = GPoint(origin.x + config.hands_shadow, origin.y + config.hands_shadow);
   GPoint p1;
@@ -1105,22 +1122,22 @@ static void draw_line_hand(GContext *ctx, int angle, int length, int back_length
   GPoint p4;
   
   #ifdef PBL_ROUND
-      p1 = polar_to_point_offset_native(origin, angle + TrigHalfAngle, back_length);
+      p1 = polar_to_point_offset_native(origin, angle + TRIG_HALF_ANGLE, back_length);
       p2 = polar_to_point_offset_native(origin, angle, length);
-      p3 = polar_to_point_offset_native(origin_offset, angle + TrigHalfAngle, back_length);
+      p3 = polar_to_point_offset_native(origin_offset, angle + TRIG_HALF_ANGLE, back_length);
       p4 = polar_to_point_offset_native(origin_offset, angle, length);
   #else
     if(settings.ForegroundShape){
-      p1 = polar_to_point_offset_native(origin, angle + TrigHalfAngle, back_length);
+      p1 = polar_to_point_offset_native(origin, angle + TRIG_HALF_ANGLE, back_length);
       p2 = polar_to_point_offset_native(origin, angle, length);
-      p3 = polar_to_point_offset_native(origin_offset, angle + TrigHalfAngle, back_length);
+      p3 = polar_to_point_offset_native(origin_offset, angle + TRIG_HALF_ANGLE, back_length);
       p4 = polar_to_point_offset_native(origin_offset, angle, length);
     }
     else{
       GRect r = GRect(0, 0, bounds.size.w, bounds.size.h);
-      p1 = polar_to_point_offset_native(origin, angle + TrigHalfAngle, back_length);
+      p1 = polar_to_point_offset_native(origin, angle + TRIG_HALF_ANGLE, back_length);
       p2 = angle_to_rounded_rect_edge_native(origin, angle, bounds.size.w/2-10, bounds.size.h/2-10, config.corner_radius_secondshand);
-      p3 = polar_to_point_offset_native(origin_offset, angle + TrigHalfAngle, back_length);
+      p3 = polar_to_point_offset_native(origin_offset, angle + TRIG_HALF_ANGLE, back_length);
       p4 = angle_to_rounded_rect_edge_native(origin_offset, angle, bounds.size.w/2-10, bounds.size.h/2-10, config.corner_radius_secondshand);
 
     }
@@ -1710,835 +1727,6 @@ if (!clock_is_24h_style()){
       }
     }
 }
-#else   //use FCTX to antialise the digits better on all colour watches, still refers to B&W in case I change my mind later on non-APLITE watches
-static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
-  
-  GRect bounds = layer_get_bounds(s_date_battery_logo_layer);
-
-  FContext fctx;
-  fctx_init_context(&fctx, ctx);
-  fctx_set_color_bias(&fctx, 0);
-  #ifdef PBL_COLOR
-   fctx_enable_aa(true);
-  #endif
-
-  if(strcmp(settings.PosLeft, "hr") == 0){
-   fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
-   FPoint hour_pos;
-
-   hour_pos.x = INT_TO_FIXED((bounds.size.w / 4));
-   hour_pos.y = INT_TO_FIXED((bounds.size.h / 2));
-
-   char mindraw[3];
-       snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
-  
-
-   int hourdraw;
-      char hournow[4];
-      if (clock_is_24h_style()) {
-        hourdraw = s_hours;
-        snprintf(hournow, sizeof(hournow), settings.RemoveZero24h ? "%d" : "%02d", hourdraw);
-      } else {
-        if (s_hours == 0 || s_hours == 12) hourdraw = 12;
-        else 
-        hourdraw = s_hours % 12;
-        snprintf(hournow, sizeof(hournow), settings.AddZero12h ? "%02d" : "%d", hourdraw);
-      }
-
-    fctx_begin_fill(&fctx);
-    fctx_set_text_em_height(&fctx, Date_Font, config.font_size_digits);
-
-    fctx_set_offset(&fctx, hour_pos);
-    fctx_set_offset(&fctx, hour_pos);
-    if(settings.DigitalHour){
-      fctx_draw_string(&fctx, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-    }
-    else{
-      fctx_draw_string(&fctx, mindraw, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-    }
-    fctx_end_fill(&fctx);
-    }
-
-  if(strcmp(settings.PosRight, "hr") == 0){
-   fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
-   FPoint hour_pos;
-
-   hour_pos.x = INT_TO_FIXED((bounds.size.w*3 / 4));
-   hour_pos.y = INT_TO_FIXED((bounds.size.h / 2));
-
-   char mindraw[3];
-       snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
-
-   int hourdraw;
-      char hournow[4];
-      if (clock_is_24h_style()) {
-        hourdraw = s_hours;
-        snprintf(hournow, sizeof(hournow), settings.RemoveZero24h ? "%d" : "%02d", hourdraw);
-      } else {
-        if (s_hours == 0 || s_hours == 12) hourdraw = 12;
-        else 
-        hourdraw = s_hours % 12;
-        snprintf(hournow, sizeof(hournow), settings.AddZero12h ? "%02d" : "%d", hourdraw);
-      }
-
-    fctx_begin_fill(&fctx);
-    fctx_set_text_em_height(&fctx, Date_Font, config.font_size_digits);
-
-    fctx_set_offset(&fctx, hour_pos);
-    fctx_set_offset(&fctx, hour_pos);
-    if(settings.DigitalHour){
-      fctx_draw_string(&fctx, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-    }
-    else{
-      fctx_draw_string(&fctx, mindraw, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-    }
-    fctx_end_fill(&fctx);
-  }
-
-  if(strcmp(settings.PosTop, "hr") == 0){
-   fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
-   FPoint hour_pos;
-
-   hour_pos.x = INT_TO_FIXED((bounds.size.w / 2));
-   hour_pos.y = INT_TO_FIXED((bounds.size.h / 4));
-
-   char mindraw[3];
-        snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
-
-   int hourdraw;
-      char hournow[4];
-      if (clock_is_24h_style()) {
-        hourdraw = s_hours;
-        snprintf(hournow, sizeof(hournow), settings.RemoveZero24h ? "%d" : "%02d", hourdraw);
-      } else {
-        if (s_hours == 0 || s_hours == 12) hourdraw = 12;
-        else 
-        hourdraw = s_hours % 12;
-        snprintf(hournow, sizeof(hournow), settings.AddZero12h ? "%02d" : "%d", hourdraw);
-      }
-
-    fctx_begin_fill(&fctx);
-    fctx_set_text_em_height(&fctx, Date_Font, config.font_size_digits);
-
-    fctx_set_offset(&fctx, hour_pos);
-    fctx_set_offset(&fctx, hour_pos);
-    if(settings.DigitalHour){
-      fctx_draw_string(&fctx, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-    }
-    else{
-      fctx_draw_string(&fctx, mindraw, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-    }
-    fctx_end_fill(&fctx);
-  }
-
-  if(strcmp(settings.PosBottom, "hr") == 0){
-   fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
-   FPoint hour_pos;
-
-   hour_pos.x = INT_TO_FIXED((bounds.size.w / 2));
-   hour_pos.y = INT_TO_FIXED((bounds.size.h*3 / 4));
-
-   char mindraw[3];
-        snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
-
-   int hourdraw;
-      char hournow[4];
-      if (clock_is_24h_style()) {
-        hourdraw = s_hours;
-        snprintf(hournow, sizeof(hournow), settings.RemoveZero24h ? "%d" : "%02d", hourdraw);
-      } else {
-        if (s_hours == 0 || s_hours == 12) hourdraw = 12;
-        else 
-        hourdraw = s_hours % 12;
-        snprintf(hournow, sizeof(hournow), settings.AddZero12h ? "%02d" : "%d", hourdraw);
-      }
-
-    fctx_begin_fill(&fctx);
-    fctx_set_text_em_height(&fctx, Date_Font, config.font_size_digits);
-
-    fctx_set_offset(&fctx, hour_pos);
-    if(settings.DigitalHour){
-      fctx_draw_string(&fctx, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-    }
-    else{
-      fctx_draw_string(&fctx, mindraw, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-    }
-    fctx_end_fill(&fctx);
-  }
-
-  //draw battery value
-  if(settings.EnableBattery ){
-        if(strcmp(settings.PosTop, "lo") == 0){
-            fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
-            FPoint battery_pos;
-            
-            int font_size_battery = config.font_size_battery + settings.ComplicationFontSizeAdj;
-            int font_height_adj = -settings.ComplicationFontSizeAdj;
-            
-            int s_battery_level = battery_state_service_peek().charge_percent;
-            fctx_begin_fill(&fctx);
-            fctx_set_text_em_height(&fctx, Date_Font, font_size_battery);
-
-                // Formats and draws the battery percentage text
-              if (settings.EnableBatteryLine) {
-
-                  battery_pos.x = INT_TO_FIXED((bounds.size.w / 2));
-                  battery_pos.y = INT_TO_FIXED(config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_z + font_height_adj);
-
-                  char BatterytoDraw[6];
-                  snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
-
-                  fctx_set_offset(&fctx, battery_pos);
-                  fctx_draw_string(&fctx, BatterytoDraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                  fctx_end_fill(&fctx);
-                }
-                else { //shift the percentage text slightly when there's no battery line
-
-                  battery_pos.x = INT_TO_FIXED((bounds.size.w / 2) );
-                  battery_pos.y = INT_TO_FIXED(config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_y);
-
-                  char BatterytoDraw[6];
-                  snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
-
-                  fctx_set_offset(&fctx, battery_pos);
-                  fctx_draw_string(&fctx, BatterytoDraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                  fctx_end_fill(&fctx);
-                }
-      }
-
-      if(strcmp(settings.PosBottom, "lo") == 0){
-            fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
-            FPoint battery_pos;
-            
-            int font_size_battery = config.font_size_battery + settings.ComplicationFontSizeAdj;
-            int font_height_adj = -settings.ComplicationFontSizeAdj;
-            
-            int s_battery_level = battery_state_service_peek().charge_percent;
-            fctx_begin_fill(&fctx);
-            fctx_set_text_em_height(&fctx, Date_Font, font_size_battery);
-
-                // Formats and draws the battery percentage text
-              if (settings.EnableBatteryLine) {
-
-                  battery_pos.x = INT_TO_FIXED((bounds.size.w / 2));
-                  battery_pos.y = INT_TO_FIXED((bounds.size.h / 2) + config.BatteryYOffset2 + config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_z + font_height_adj);
-
-                  char BatterytoDraw[6];
-                  snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
-
-                  fctx_set_offset(&fctx, battery_pos);
-                  fctx_draw_string(&fctx, BatterytoDraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                  fctx_end_fill(&fctx);
-                }
-                else { //shift the percentage text slightly when there's no battery line
-
-                  battery_pos.x = INT_TO_FIXED((bounds.size.w / 2) );
-                  battery_pos.y = INT_TO_FIXED((bounds.size.h / 2) + config.BatteryYOffset2 + config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_y);
-
-                  char BatterytoDraw[6];
-                  snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
-
-                  fctx_set_offset(&fctx, battery_pos);
-                  fctx_draw_string(&fctx, BatterytoDraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                  fctx_end_fill(&fctx);
-                }
-      }
-
-      if(strcmp(settings.PosLeft, "lo") == 0){
-            fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
-            FPoint battery_pos;
-            
-            int font_size_battery = config.font_size_battery + settings.ComplicationFontSizeAdj;
-            int font_height_adj = -settings.ComplicationFontSizeAdj;
-
-            int s_battery_level = battery_state_service_peek().charge_percent;
-            fctx_begin_fill(&fctx);
-            fctx_set_text_em_height(&fctx, Date_Font, font_size_battery);
-
-                // Formats and draws the battery percentage text
-              if (settings.EnableBatteryLine) {
-
-                  battery_pos.x = INT_TO_FIXED((bounds.size.w / 4));
-                  battery_pos.y = INT_TO_FIXED((bounds.size.h / 4) + config.BatteryYOffset3 +config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_z + font_height_adj);
-
-                  char BatterytoDraw[6];
-                  snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
-
-                  fctx_set_offset(&fctx, battery_pos);
-                  fctx_draw_string(&fctx, BatterytoDraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                  fctx_end_fill(&fctx);
-                }
-                else { //shift the percentage text slightly when there's no battery line
-
-                  battery_pos.x = INT_TO_FIXED((bounds.size.w / 4) );
-                  battery_pos.y = INT_TO_FIXED((bounds.size.h / 4) + config.BatteryYOffset3 + config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_y);
-
-                  char BatterytoDraw[6];
-                  snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
-
-                  fctx_set_offset(&fctx, battery_pos);
-                  fctx_draw_string(&fctx, BatterytoDraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                  fctx_end_fill(&fctx);
-                }
-      }
-
-      if(strcmp(settings.PosRight, "lo") == 0){
-            fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
-            FPoint battery_pos;
-            
-            int font_size_battery = config.font_size_battery + settings.ComplicationFontSizeAdj;
-            int font_height_adj = -settings.ComplicationFontSizeAdj;
-
-            int s_battery_level = battery_state_service_peek().charge_percent;
-            fctx_begin_fill(&fctx);
-            fctx_set_text_em_height(&fctx, Date_Font, font_size_battery);
-
-                // Formats and draws the battery percentage text
-              if (settings.EnableBatteryLine) {
-
-                  battery_pos.x = INT_TO_FIXED((bounds.size.w*3 / 4));
-                  battery_pos.y = INT_TO_FIXED((bounds.size.h / 4) + config.BatteryYOffset3 +config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_z + font_height_adj);
-
-                  char BatterytoDraw[6];
-                  snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
-
-                  fctx_set_offset(&fctx, battery_pos);
-                  fctx_draw_string(&fctx, BatterytoDraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                  fctx_end_fill(&fctx);
-                }
-                else { //shift the percentage text slightly when there's no battery line
-
-                  battery_pos.x = INT_TO_FIXED((bounds.size.w*3 / 4) );
-                  battery_pos.y = INT_TO_FIXED((bounds.size.h / 4) + config.BatteryYOffset3 + config.BatteryYOffset + config.yOffsetFctx + config.battery_pos_y);
-
-                  char BatterytoDraw[6];
-                  snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
-
-                  fctx_set_offset(&fctx, battery_pos);
-                  fctx_draw_string(&fctx, BatterytoDraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                  fctx_end_fill(&fctx);
-                }
-      }
-  }
-
-
-  //draw weekday and date text
-  if (settings.EnableDate ) {
-
-    if(strcmp(settings.PosRight, "dt") == 0){
-    fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
-
-    minutes = prv_tick_time->tm_min;
-    hours = prv_tick_time->tm_hour % 12;
-
-    ///use below for testing and for screenshots
-       // minutes = 30;
-       // hours = 9;
-
-    FPoint weekday_pos;
-    FPoint date_pos;
-
-    int font_size_date = config.font_size_date + settings.ComplicationFontSizeAdj;
-   
-    int xOffset = config.xOffset;
-    int yOffset = config.yOffset;
-    int yOffsetFctx = config.yOffsetFctx;
-    int xWeekdayOffset = config.xWeekdayOffset;
-    int yWeekdayDateOffset = config.yWeekdayDateOffset;
-    int xDateOffset = config.xDateOffset;
-    int xyMaskOffset = config.xyMaskOffset;
-    int ShadowAndMaskWidth = config.ShadowAndMaskWidth;
-    int ShadowAndMaskHeight = config.ShadowAndMaskHeight;
-    int xOffsetFctxWeekday = config.xOffsetFctxWeekday;
-    int xOffsetFctxDate = config.xOffsetFctxDate;
-
-      weekday_pos.x = INT_TO_FIXED(bounds.size.w/2 + xOffset + xOffsetFctxWeekday + xWeekdayOffset);
-      weekday_pos.y = INT_TO_FIXED(bounds.size.h/2 + yOffset + yOffsetFctx + yWeekdayDateOffset);
-      date_pos.x = INT_TO_FIXED(bounds.size.w/2 + xOffset + xOffsetFctxDate + xDateOffset);
-      date_pos.y = INT_TO_FIXED(bounds.size.h/2 + yOffset + yOffsetFctx + yWeekdayDateOffset);
-
-    fctx_begin_fill(&fctx);
-    fctx_set_text_em_height(&fctx, Date_Font, font_size_date);
-
-    const char * sys_locale = i18n_get_system_locale();
-    char weekday[5];
-    fetchwday(s_weekday, sys_locale, weekday);
-
-    char weekdaydraw[10];
-    snprintf(weekdaydraw, sizeof(weekdaydraw), "%s", weekday);
-  //  snprintf(weekdaydraw, sizeof(weekdaydraw), "%s", "WED");  //use for testing instead of line above (WED is widest text for weekday)
-
-    fctx_set_offset(&fctx, weekday_pos);
-    fctx_draw_string(&fctx, weekdaydraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-    fctx_end_fill(&fctx);
-
-
-
-    fctx_begin_fill(&fctx);
-    fctx_set_text_em_height(&fctx, Date_Font, font_size_date);
-
-    char daynow[5];
-    snprintf(daynow, sizeof(daynow), "%d", current_date);
-  //  snprintf(daynow, sizeof(daynow), "%s", "30"); //use for testing instead of line above (30 is widest text for date)
-
-    fctx_set_offset(&fctx, date_pos);
-    fctx_draw_string(&fctx, daynow, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-    fctx_end_fill(&fctx);
-
-
-    }
-
-    if(strcmp(settings.PosLeft, "dt") == 0){
-    fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
-
-    minutes = prv_tick_time->tm_min;
-    hours = prv_tick_time->tm_hour % 12;
-
-    ///use below for testing and for screenshots
-       // minutes = 30;
-       // hours = 9;
-
-    FPoint weekday_pos;
-    FPoint date_pos;
-
-    int font_size_date = config.font_size_date + settings.ComplicationFontSizeAdj;
-   
-    int xOffset = config.xOffset;
-    int yOffset = config.yOffset;
-    int yOffsetFctx = config.yOffsetFctx;
-    int xWeekdayOffset = config.xWeekdayOffset;
-    int yWeekdayDateOffset = config.yWeekdayDateOffset;
-    int xDateOffset = config.xDateOffset;
-    int xyMaskOffset = config.xyMaskOffset;
-    int ShadowAndMaskWidth = config.ShadowAndMaskWidth;
-    int ShadowAndMaskHeight = config.ShadowAndMaskHeight;
-    int xOffsetFctxWeekday = config.xOffsetFctxWeekday;
-    int xOffsetFctxDate = config.xOffsetFctxDate;
-
-      weekday_pos.x = INT_TO_FIXED(config.LeftxPosition + xOffset + xOffsetFctxWeekday + xWeekdayOffset);
-      weekday_pos.y = INT_TO_FIXED(bounds.size.h/2 + yOffset + yOffsetFctx+ yWeekdayDateOffset);
-      date_pos.x = INT_TO_FIXED(config.LeftxPosition + xOffset + xOffsetFctxDate + xDateOffset);
-      date_pos.y = INT_TO_FIXED(bounds.size.h/2 + yOffset + yOffsetFctx + yWeekdayDateOffset);
- 
-    fctx_begin_fill(&fctx);
-    fctx_set_text_em_height(&fctx, Date_Font, font_size_date);
-
-    const char * sys_locale = i18n_get_system_locale();
-    char weekday[5];
-    fetchwday(s_weekday, sys_locale, weekday);
-
-    char weekdaydraw[10];
-    snprintf(weekdaydraw, sizeof(weekdaydraw), "%s", weekday);
-  //  snprintf(weekdaydraw, sizeof(weekdaydraw), "%s", "WED");  //use for testing instead of line above (WED is widest text for weekday)
-
-    fctx_set_offset(&fctx, weekday_pos);
-    fctx_draw_string(&fctx, weekdaydraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-    fctx_end_fill(&fctx);
-
-
-
-    fctx_begin_fill(&fctx);
-    fctx_set_text_em_height(&fctx, Date_Font, font_size_date);
-
-    char daynow[5];
-    snprintf(daynow, sizeof(daynow), "%d", current_date);
-  //  snprintf(daynow, sizeof(daynow), "%s", "30"); //use for testing instead of line above (30 is widest text for date)
-
-    fctx_set_offset(&fctx, date_pos);
-    fctx_draw_string(&fctx, daynow, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-    fctx_end_fill(&fctx);
-
-
-    }
-
-
-
-
-    if(strcmp(settings.PosBottom, "dt") == 0){
-    fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
-
-    minutes = prv_tick_time->tm_min;
-    hours = prv_tick_time->tm_hour % 12;
-
-    ///use below for testing and for screenshots
-       // minutes = 30;
-       // hours = 9;
-
-    FPoint weekday_pos;
-    FPoint date_pos;
-
-    int font_size_date = config.font_size_date + settings.ComplicationFontSizeAdj;
-
-    int xOffset = config.xOffset;
-    int yOffset = config.yOffset;
-    int yOffsetFctx = config.yOffsetFctx;
-    int xWeekdayOffset = config.xWeekdayOffset;
-    int yWeekdayDateOffset = config.yWeekdayDateOffset;
-    int xDateOffset = config.xDateOffset;
-    int xyMaskOffset = config.xyMaskOffset;
-    int ShadowAndMaskWidth = config.ShadowAndMaskWidth;
-    int ShadowAndMaskHeight = config.ShadowAndMaskHeight;
-    int xOffsetFctxWeekday = config.xOffsetFctxWeekday;
-    int xOffsetFctxDate = config.xOffsetFctxDate;
-
-      weekday_pos.x = INT_TO_FIXED(config.BottomXPosition + xOffset + xOffsetFctxWeekday + xWeekdayOffset);
-      weekday_pos.y = INT_TO_FIXED(config.DateBottomYPosition + yOffset + yOffsetFctx + yWeekdayDateOffset);
-      date_pos.x = INT_TO_FIXED(config.BottomXPosition + xOffset + xOffsetFctxDate + xDateOffset);
-      date_pos.y = INT_TO_FIXED(config.DateBottomYPosition + yOffset + yOffsetFctx + yWeekdayDateOffset);
-
-    fctx_begin_fill(&fctx);
-    fctx_set_text_em_height(&fctx, Date_Font, font_size_date);
-
-    const char * sys_locale = i18n_get_system_locale();
-    char weekday[5];
-    fetchwday(s_weekday, sys_locale, weekday);
-
-    char weekdaydraw[10];
-    snprintf(weekdaydraw, sizeof(weekdaydraw), "%s", weekday);
-  //  snprintf(weekdaydraw, sizeof(weekdaydraw), "%s", "WED");  //use for testing instead of line above (WED is widest text for weekday)
-
-    fctx_set_offset(&fctx, weekday_pos);
-    fctx_draw_string(&fctx, weekdaydraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-    fctx_end_fill(&fctx);
-
-
-
-    fctx_begin_fill(&fctx);
-    fctx_set_text_em_height(&fctx, Date_Font, font_size_date);
-
-    char daynow[5];
-    snprintf(daynow, sizeof(daynow), "%d", current_date);
-  //  snprintf(daynow, sizeof(daynow), "%s", "30"); //use for testing instead of line above (30 is widest text for date)
-
-    fctx_set_offset(&fctx, date_pos);
-    fctx_draw_string(&fctx, daynow, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-    fctx_end_fill(&fctx);
-
-
-    }
-
-    if(strcmp(settings.PosTop, "dt") == 0){
-    fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
-
-    minutes = prv_tick_time->tm_min;
-    hours = prv_tick_time->tm_hour % 12;
-
-    FPoint weekday_pos;
-    FPoint date_pos;
-
-    int font_size_date = config.font_size_date + settings.ComplicationFontSizeAdj;
-   
-    int xOffset = config.xOffset;
-    int yOffset = config.yOffset;
-    int yOffsetFctx = config.yOffsetFctx;
-    int xWeekdayOffset = config.xWeekdayOffset;
-    int yWeekdayDateOffset = config.yWeekdayDateOffset;
-    int xDateOffset = config.xDateOffset;
-    int xyMaskOffset = config.xyMaskOffset;
-    int ShadowAndMaskWidth = config.ShadowAndMaskWidth;
-    int ShadowAndMaskHeight = config.ShadowAndMaskHeight;
-    int xOffsetFctxWeekday = config.xOffsetFctxWeekday;
-    int xOffsetFctxDate = config.xOffsetFctxDate;
-
-      weekday_pos.x = INT_TO_FIXED(config.BottomXPosition + xOffset + xOffsetFctxWeekday + xWeekdayOffset);
-      weekday_pos.y = INT_TO_FIXED(bounds.size.h/4);
-      date_pos.x = INT_TO_FIXED(config.BottomXPosition + xOffset + xOffsetFctxDate + xDateOffset);
-      date_pos.y = INT_TO_FIXED(bounds.size.h/4);
-    
-   
-    fctx_begin_fill(&fctx);
-    fctx_set_text_em_height(&fctx, Date_Font, font_size_date);
-
-    const char * sys_locale = i18n_get_system_locale();
-    char weekday[5];
-    fetchwday(s_weekday, sys_locale, weekday);
-
-    char weekdaydraw[10];
-    snprintf(weekdaydraw, sizeof(weekdaydraw), "%s", weekday);
- 
-    fctx_set_offset(&fctx, weekday_pos);
-    fctx_draw_string(&fctx, weekdaydraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-    fctx_end_fill(&fctx);
-
-
-
-    fctx_begin_fill(&fctx);
-    fctx_set_text_em_height(&fctx, Date_Font, font_size_date);
-
-    char daynow[5];
-    snprintf(daynow, sizeof(daynow), "%d", current_date);
-  //  snprintf(daynow, sizeof(daynow), "%s", "30"); //use for testing instead of line above (30 is widest text for date)
-
-    fctx_set_offset(&fctx, date_pos);
-    fctx_draw_string(&fctx, daynow, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-    fctx_end_fill(&fctx);
-
-
-    }
-  }
-
-
-    if (settings.EnableLogo) {  //draw logo text
-      if(strcmp(settings.PosTop, "lo") == 0){
-          fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
-          FPoint logo_pos;
-
-          logo_pos.x = INT_TO_FIXED((bounds.size.w / 2));
-          logo_pos.y = INT_TO_FIXED(config.LogoYOffset);
-
-            int font_size_logo = config.font_size_logo + settings.ComplicationFontSizeAdj;
-            #ifdef PBL_PLATFORM_EMERY
-              char logodraw[20];
-            #elif defined (PBL_PLATFORM_GABBRO)
-              char logodraw[20];
-            #else
-              char logodraw[20];
-            #endif
-            snprintf(logodraw, sizeof(logodraw), "%s", settings.LogoText);
-
-            
-
-            #ifdef PBL_PLATFORM_EMERY
-              #define LOGO_WRAP_AT 8
-            #elif defined (PBL_PLATFORM_GABBRO)
-              #define LOGO_WRAP_AT 18
-            #else
-              #define LOGO_WRAP_AT 12
-            #endif
-
-            char *line2 = NULL;
-            if (strlen(logodraw) > LOGO_WRAP_AT) {
-                char *split = NULL;
-                for (int i = LOGO_WRAP_AT; i >= 0; i--) {
-                    if (logodraw[i] == ' ') {
-                        split = &logodraw[i];
-                        break;
-                    }
-                }
-                if (split) {
-                    *split = '\0';
-                    line2 = split + 1;
-                }
-            }
-
-          if (line2) {
-                // Draw line 1
-                fctx_begin_fill(&fctx);
-                fctx_set_text_em_height(&fctx, Date_Font, font_size_logo);
-                fctx_set_offset(&fctx, logo_pos);   
-                fctx_draw_string(&fctx, logodraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                fctx_end_fill(&fctx);
-
-                // Draw line 2
-            logo_pos.y = INT_TO_FIXED(config.LogoYOffset + font_size_logo + 2);
-                  fctx_begin_fill(&fctx);
-                  fctx_set_text_em_height(&fctx, Date_Font, font_size_logo);
-                  fctx_set_offset(&fctx, logo_pos);   
-                  fctx_draw_string(&fctx, line2, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                  fctx_end_fill(&fctx);
-
-            } else {
-                fctx_begin_fill(&fctx);
-                fctx_set_text_em_height(&fctx, Date_Font, font_size_logo);
-                fctx_set_offset(&fctx, logo_pos);
-                fctx_draw_string(&fctx, logodraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                fctx_end_fill(&fctx);
-           }
-
-
-            
-      }
-
-      if(strcmp(settings.PosBottom, "lo") == 0){
-          fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
-          FPoint logo_pos;
-          logo_pos.x = INT_TO_FIXED((bounds.size.w / 2));
-          logo_pos.y = INT_TO_FIXED(config.LogoYOffset + config.LogoYOffset3);
-            int font_size_logo = config.font_size_logo + settings.ComplicationFontSizeAdj;
-            char logodraw[20];
-            snprintf(logodraw, sizeof(logodraw), "%s", settings.LogoText);
-            char *line2 = NULL;
-            if (strlen(logodraw) > LOGO_WRAP_AT) {
-                char *split = NULL;
-                for (int i = LOGO_WRAP_AT; i >= 0; i--) {
-                    if (logodraw[i] == ' ') { split = &logodraw[i]; break; }
-                }
-                if (split) { *split = '\0'; line2 = split + 1; }
-            }
-            if (line2) {
-                fctx_begin_fill(&fctx);
-                fctx_set_text_em_height(&fctx, Date_Font, font_size_logo);
-                fctx_set_offset(&fctx, logo_pos);
-                fctx_draw_string(&fctx, logodraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                fctx_end_fill(&fctx);
-                logo_pos.y = INT_TO_FIXED(config.LogoYOffset + config.LogoYOffset3 + font_size_logo + 2);
-                fctx_begin_fill(&fctx);
-                fctx_set_text_em_height(&fctx, Date_Font, font_size_logo);
-                fctx_set_offset(&fctx, logo_pos);
-                fctx_draw_string(&fctx, line2, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                fctx_end_fill(&fctx);
-            } else {
-                fctx_begin_fill(&fctx);
-                fctx_set_text_em_height(&fctx, Date_Font, font_size_logo);
-                fctx_set_offset(&fctx, logo_pos);
-                fctx_draw_string(&fctx, logodraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                fctx_end_fill(&fctx);
-            }
-      }
-
-      if(strcmp(settings.PosLeft, "lo") == 0){
-          fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
-          FPoint logo_pos;
-          logo_pos.x = INT_TO_FIXED((bounds.size.w / 4));
-          logo_pos.y = INT_TO_FIXED(bounds.size.h / 2 - config.LogoYOffset2/2);
-            int font_size_logo = config.font_size_logo + settings.ComplicationFontSizeAdj;
-            char logodraw[20];
-            snprintf(logodraw, sizeof(logodraw), "%s", settings.LogoText);
-            char *line2 = NULL;
-            if (strlen(logodraw) > LOGO_WRAP_AT) {
-                char *split = NULL;
-                for (int i = LOGO_WRAP_AT; i >= 0; i--) {
-                    if (logodraw[i] == ' ') { split = &logodraw[i]; break; }
-                }
-                if (split) { *split = '\0'; line2 = split + 1; }
-            }
-            if (line2) {
-                fctx_begin_fill(&fctx);
-                fctx_set_text_em_height(&fctx, Date_Font, font_size_logo);
-                fctx_set_offset(&fctx, logo_pos);
-                fctx_draw_string(&fctx, logodraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                fctx_end_fill(&fctx);
-                logo_pos.y = INT_TO_FIXED(bounds.size.h / 2 - config.LogoYOffset2/2 + font_size_logo + 2);
-                fctx_begin_fill(&fctx);
-                fctx_set_text_em_height(&fctx, Date_Font, font_size_logo);
-                fctx_set_offset(&fctx, logo_pos);
-                fctx_draw_string(&fctx, line2, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                fctx_end_fill(&fctx);
-            } else {
-                fctx_begin_fill(&fctx);
-                fctx_set_text_em_height(&fctx, Date_Font, font_size_logo);
-                fctx_set_offset(&fctx, logo_pos);
-                fctx_draw_string(&fctx, logodraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                fctx_end_fill(&fctx);
-            }
-      }
-      if(strcmp(settings.PosRight, "lo") == 0){
-          fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
-          FPoint logo_pos;
-          logo_pos.x = INT_TO_FIXED((bounds.size.w*3 / 4));
-          logo_pos.y = INT_TO_FIXED(bounds.size.h / 2 - config.LogoYOffset2/2);
-            int font_size_logo = config.font_size_logo + settings.ComplicationFontSizeAdj;
-            char logodraw[20];
-            snprintf(logodraw, sizeof(logodraw), "%s", settings.LogoText);
-            char *line2 = NULL;
-            if (strlen(logodraw) > LOGO_WRAP_AT) {
-                char *split = NULL;
-                for (int i = LOGO_WRAP_AT; i >= 0; i--) {
-                    if (logodraw[i] == ' ') { split = &logodraw[i]; break; }
-                }
-                if (split) { *split = '\0'; line2 = split + 1; }
-            }
-            if (line2) {
-                fctx_begin_fill(&fctx);
-                fctx_set_text_em_height(&fctx, Date_Font, font_size_logo);
-                fctx_set_offset(&fctx, logo_pos);
-                fctx_draw_string(&fctx, logodraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                fctx_end_fill(&fctx);
-                logo_pos.y = INT_TO_FIXED(bounds.size.h / 2 - config.LogoYOffset2/2 + font_size_logo + 2);
-                fctx_begin_fill(&fctx);
-                fctx_set_text_em_height(&fctx, Date_Font, font_size_logo);
-                fctx_set_offset(&fctx, logo_pos);
-                fctx_draw_string(&fctx, line2, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                fctx_end_fill(&fctx);
-            } else {
-                fctx_begin_fill(&fctx);
-                fctx_set_text_em_height(&fctx, Date_Font, font_size_logo);
-                fctx_set_offset(&fctx, logo_pos);
-                fctx_draw_string(&fctx, logodraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
-                fctx_end_fill(&fctx);
-            }
-      }
-    }
-
-    if(!clock_is_24h_style()){
-
-      if(strcmp(settings.PosBottom, "ap") == 0){
-          fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
-          FPoint ampm_pos;
-
-          ampm_pos.x = INT_TO_FIXED((bounds.size.w / 2));
-          ampm_pos.y = INT_TO_FIXED((bounds.size.h*3 / 4));
-
-
-          char local_ampm_string[5];
-          strftime(local_ampm_string, sizeof(local_ampm_string), "%p", prv_tick_time);
-   
-            fctx_begin_fill(&fctx);
-            fctx_set_text_em_height(&fctx, Date_Font, config.font_size_battery + settings.ComplicationFontSizeAdj);
-                  fctx_set_offset(&fctx, ampm_pos);
-                  fctx_draw_string(&fctx, local_ampm_string, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-                  fctx_end_fill(&fctx);
-       }
-
-       if(strcmp(settings.PosTop, "ap") == 0){
-          fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
-          FPoint ampm_pos;
-
-          ampm_pos.x = INT_TO_FIXED((bounds.size.w / 2));
-          ampm_pos.y = INT_TO_FIXED((bounds.size.h / 4));
-
-
-          char local_ampm_string[5];
-          strftime(local_ampm_string, sizeof(local_ampm_string), "%p", prv_tick_time);
-   
-            fctx_begin_fill(&fctx);
-            fctx_set_text_em_height(&fctx, Date_Font, config.font_size_battery + settings.ComplicationFontSizeAdj);
-                  fctx_set_offset(&fctx, ampm_pos);
-                  fctx_draw_string(&fctx, local_ampm_string, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-                  fctx_end_fill(&fctx);
-       }
-
-       if(strcmp(settings.PosLeft, "ap") == 0){
-          fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
-          FPoint ampm_pos;
-
-          ampm_pos.x = INT_TO_FIXED((bounds.size.w / 4));
-          ampm_pos.y = INT_TO_FIXED((bounds.size.h / 2));
-
-
-          char local_ampm_string[5];
-          strftime(local_ampm_string, sizeof(local_ampm_string), "%p", prv_tick_time);
-   
-            fctx_begin_fill(&fctx);
-            fctx_set_text_em_height(&fctx, Date_Font, config.font_size_battery + settings.ComplicationFontSizeAdj);
-                  fctx_set_offset(&fctx, ampm_pos);
-                  fctx_draw_string(&fctx, local_ampm_string, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-                  fctx_end_fill(&fctx);
-       }
-
-      if(strcmp(settings.PosRight, "ap") == 0){
-          fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
-          FPoint ampm_pos;
-
-          ampm_pos.x = INT_TO_FIXED((bounds.size.w * 3 / 4));
-          ampm_pos.y = INT_TO_FIXED((bounds.size.h / 2));
-
-
-          char local_ampm_string[5];
-          strftime(local_ampm_string, sizeof(local_ampm_string), "%p", prv_tick_time);
-   
-            fctx_begin_fill(&fctx);
-            fctx_set_text_em_height(&fctx, Date_Font, config.font_size_battery + settings.ComplicationFontSizeAdj);
-                  fctx_set_offset(&fctx, ampm_pos);
-                  fctx_draw_string(&fctx, local_ampm_string, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-                  fctx_end_fill(&fctx);
-       }
-    } 
-
-    fctx_deinit_context(&fctx);
-      
-}
-#endif
 
 static void layer_update_proc_battery_line(Layer *layer, GContext *ctx) {
     // If neither element is enabled in config, stop.
@@ -2597,6 +1785,266 @@ static void layer_update_proc_battery_line(Layer *layer, GContext *ctx) {
     }
     }
 }
+
+#else   //use FCTX to antialise the digits better on all colour watches, still refers to B&W in case I change my mind later on non-APLITE watches
+
+static FPoint relative_gpoint_to_fpoint(GPoint *gpoint) {
+  return 
+    (FPoint){ .x = INT_TO_FIXED(bounds.size.w / 2 + gpoint->x),
+              .y = INT_TO_FIXED(bounds.size.h / 2 + gpoint->y) };
+}
+
+static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
+  fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
+  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4);
+  FPoint hour_pos = relative_gpoint_to_fpoint(&rel_pos);
+
+  char mindraw[3];
+      snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
+
+  int hourdraw;
+    char hournow[4];
+    if (clock_is_24h_style()) {
+      hourdraw = s_hours;
+      snprintf(hournow, sizeof(hournow), settings.RemoveZero24h ? "%d" : "%02d", hourdraw);
+    } else {
+      if (s_hours == 0 || s_hours == 12) hourdraw = 12;
+      else 
+      hourdraw = s_hours % 12;
+      snprintf(hournow, sizeof(hournow), settings.AddZero12h ? "%02d" : "%d", hourdraw);
+    }
+
+  fctx_begin_fill(fctxp);
+  fctx_set_text_em_height(fctxp, Date_Font, config.font_size_digits);
+
+  fctx_set_offset(fctxp, hour_pos);
+  fctx_set_offset(fctxp, hour_pos);
+  if(settings.DigitalHour){
+    fctx_draw_string(fctxp, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
+  }
+  else{
+    fctx_draw_string(fctxp, mindraw, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
+  }
+  fctx_end_fill(fctxp);
+}
+
+static void render_ampm_fctx(FContext *fctxp, int angle_native) {
+  fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
+
+  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4);
+  FPoint ampm_pos = relative_gpoint_to_fpoint(&rel_pos);
+
+  char local_ampm_string[5];
+  strftime(local_ampm_string, sizeof(local_ampm_string), "%p", prv_tick_time);
+
+  fctx_begin_fill(fctxp);
+  fctx_set_text_em_height(fctxp, Date_Font, config.font_size_battery + settings.ComplicationFontSizeAdj);
+        fctx_set_offset(fctxp, ampm_pos);
+        fctx_draw_string(fctxp, local_ampm_string, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
+        fctx_end_fill(fctxp);
+}
+
+static void render_logo_fctx(FContext *fctxp, int angle_native) {
+  #ifdef PBL_PLATFORM_EMERY
+    #define LOGO_WRAP_AT 8
+  #elif defined (PBL_PLATFORM_GABBRO)
+    #define LOGO_WRAP_AT 18
+  #else
+    #define LOGO_WRAP_AT 12
+  #endif
+
+  const int logo_top_margin = 2;
+  const int logo_line_spacing = 2;
+  fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
+
+  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4);
+  FPoint logo_pos = relative_gpoint_to_fpoint(&rel_pos);
+
+  logo_pos.y += INT_TO_FIXED(logo_line_spacing + logo_top_margin);
+  int font_size_logo = config.font_size_logo + settings.ComplicationFontSizeAdj;
+  char logodraw[20];
+
+  snprintf(logodraw, sizeof(logodraw), "%s", settings.LogoText);
+  char *line2 = NULL;
+  if (strlen(logodraw) > LOGO_WRAP_AT) {
+      char *split = NULL;
+      for (int i = LOGO_WRAP_AT; i >= 0; i--) {
+          if (logodraw[i] == ' ') { split = &logodraw[i]; break; }
+      }
+      if (split) { *split = '\0'; line2 = split + 1; }
+  }
+  if (line2) {
+      fctx_begin_fill(fctxp);
+      fctx_set_text_em_height(fctxp, Date_Font, font_size_logo);
+      fctx_set_offset(fctxp, logo_pos);
+      fctx_draw_string(fctxp, logodraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
+      fctx_end_fill(fctxp);
+      logo_pos.y += INT_TO_FIXED(font_size_logo + logo_line_spacing);
+      fctx_begin_fill(fctxp);
+      fctx_set_text_em_height(fctxp, Date_Font, font_size_logo);
+      fctx_set_offset(fctxp, logo_pos);
+      fctx_draw_string(fctxp, line2, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
+      fctx_end_fill(fctxp);
+  } else {
+      fctx_begin_fill(fctxp);
+      fctx_set_text_em_height(fctxp, Date_Font, font_size_logo);
+      fctx_set_offset(fctxp, logo_pos);
+      fctx_draw_string(fctxp, logodraw, Date_Font, GTextAlignmentCenter, FTextAnchorTop);
+      fctx_end_fill(fctxp);
+  }
+}
+
+static void render_battery_pct_fctx(FContext *fctxp, int angle_native) {
+  const int battery_line_offset = 2;
+  const int battery_pct_offset = 2;
+
+  fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
+
+  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4);
+  FPoint battery_pos = relative_gpoint_to_fpoint(&rel_pos);
+  
+  int font_size_battery = config.font_size_battery + settings.ComplicationFontSizeAdj;
+  int font_height_adj = -settings.ComplicationFontSizeAdj;
+  
+  int s_battery_level = battery_state_service_peek().charge_percent;
+  fctx_begin_fill(fctxp);
+  fctx_set_text_em_height(fctxp, Date_Font, font_size_battery);
+
+  battery_pos.y -= battery_pct_offset;
+  if (settings.EnableBatteryLine)
+    battery_pos.y -= battery_line_offset;
+
+  char BatterytoDraw[6];
+  snprintf(BatterytoDraw,sizeof(BatterytoDraw),"%d",s_battery_level);
+
+  fctx_set_offset(fctxp, battery_pos);
+  fctx_draw_string(fctxp, BatterytoDraw, Date_Font, GTextAlignmentCenter, FTextAnchorBottom);
+  fctx_end_fill(fctxp);
+}
+
+static void render_date_fctx(FContext *fctxp, int angle_native) {
+  fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
+
+  minutes = prv_tick_time->tm_min;
+  hours = prv_tick_time->tm_hour % 12;
+
+  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4);
+  FPoint weekday_pos = relative_gpoint_to_fpoint(&rel_pos);
+  FPoint date_pos = weekday_pos;
+
+  int font_size_date = config.font_size_date + settings.ComplicationFontSizeAdj;
+
+  weekday_pos.y -= INT_TO_FIXED(font_size_date / 2 + 1);
+  date_pos.y += INT_TO_FIXED(font_size_date / 2 + 1);
+
+  fctx_begin_fill(fctxp);
+  fctx_set_text_em_height(fctxp, Date_Font, font_size_date);
+
+  const char * sys_locale = i18n_get_system_locale();
+  char weekday[5];
+  fetchwday(s_weekday, sys_locale, weekday);
+
+  char weekdaydraw[10];
+  snprintf(weekdaydraw, sizeof(weekdaydraw), "%s", weekday);
+
+  fctx_set_offset(fctxp, weekday_pos);
+  fctx_draw_string(fctxp, weekdaydraw, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
+  fctx_end_fill(fctxp);
+
+  fctx_begin_fill(fctxp);
+  fctx_set_text_em_height(fctxp, Date_Font, font_size_date);
+
+  char daynow[5];
+  snprintf(daynow, sizeof(daynow), "%d", current_date);
+
+  fctx_set_offset(fctxp, date_pos);
+  fctx_draw_string(fctxp, daynow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
+  fctx_end_fill(fctxp);
+}
+
+static inline int get_base_angle() {
+  const int top_angle = -TRIG_QUARTER_ANGLE;
+  return settings.OrbitComplications ? hand_angle_native : top_angle;
+}
+
+static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
+  int base_angle = get_base_angle();
+  int curr_angle = base_angle;
+
+  APP_LOG(APP_LOG_LEVEL_INFO, "update_logo_date_battery_fctx_layer");
+  FContext fctx;
+  fctx_init_context(&fctx, ctx);
+  fctx_set_color_bias(&fctx, 0);
+  #ifdef PBL_COLOR
+   fctx_enable_aa(true);
+  #endif
+
+  char* compSettings[] = { settings.PosTop, settings.PosRight, settings.PosBottom, settings.PosLeft, NULL };
+  for (char** setting = compSettings;
+      setting && *setting;
+      curr_angle += TRIG_QUARTER_ANGLE, setting++) {
+
+    char* currSetting = *setting;
+
+    if (strcmp(currSetting, "hr") == 0) {
+      render_hour_digits_fctx(&fctx, curr_angle);
+    } else if(strcmp(currSetting, "lo") == 0) {
+      if (settings.EnableBattery)
+        render_battery_pct_fctx(&fctx, curr_angle);
+      if (settings.EnableLogo)
+        render_logo_fctx(&fctx, curr_angle);
+    } else if (strcmp(currSetting, "dt") == 0) {
+      if (settings.EnableDate)
+        render_date_fctx(&fctx, curr_angle);
+    } else if (strcmp(currSetting, "ap") == 0) {
+      if (!clock_is_24h_style())
+        render_ampm_fctx(&fctx, curr_angle);
+    }
+  }
+
+  fctx_deinit_context(&fctx);
+}
+
+static void render_battery_line(GContext *ctx, int angle_native, int s_battery_level) {
+  int width_rect = (s_battery_level * config.battery_line) / 100;
+  GPoint line_center = polar_to_point_native(angle_native, bounds.size.w/4);
+  line_center.x += bounds.size.w / 2;
+  line_center.y += bounds.size.h / 2;
+
+  GRect BatteryLineRect = GRect(line_center.x - width_rect/2, line_center.y, width_rect, 2);
+  graphics_context_set_antialiased(ctx, true);
+  graphics_context_set_fill_color(ctx, PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.BatteryLineColor));
+  graphics_fill_rect(ctx,BatteryLineRect, 1, GCornersBottom);  
+}
+
+static void layer_update_proc_battery_line(Layer *layer, GContext *ctx) {
+  // If neither element is enabled in config, stop.
+  if (!settings.EnableBattery && !settings.EnableBatteryLine) {
+      return;
+  }
+
+  int s_battery_level = battery_state_service_peek().charge_percent;
+
+  int base_angle = get_base_angle();
+  int curr_angle = base_angle;
+
+  // Draw battery line
+  char* compSettings[] = { settings.PosTop, settings.PosRight, settings.PosBottom, settings.PosLeft, NULL };
+  for (char** setting = compSettings;
+      setting && *setting;
+      curr_angle += TRIG_QUARTER_ANGLE, setting++) {
+
+    char* currSetting = *setting;
+
+    if (strcmp(currSetting, "lo") == 0) {
+      if (settings.EnableBatteryLine) {
+        render_battery_line(ctx, curr_angle, s_battery_level);
+      }
+    }
+  }
+}
+
+#endif
 
 //Update procedure for the Bluetooth Icon (shows when disconnected) layer
 static void layer_update_proc_bt(Layer * layer, GContext * ctx){
@@ -2718,31 +2166,26 @@ static void layer_update_proc_qt(Layer * layer, GContext * ctx){
 
 }
 
-// Update procedure for the main canvas layer (hour & minute hands)
-static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx) {
-  const int TrigQuarterAngle = TRIG_MAX_ANGLE / 4;
-  GRect bounds = layer_get_bounds(layer);
-
-//use these for live version
-   minutes = prv_tick_time->tm_min;
-
-  ///use below for testing and for screenshots
-    // int minutes = 30;
-    // int hours = 9;
-  
-  #ifdef MINUTE
-    minutes = MINUTE;
-  #endif
-
+int calculate_hand_angle(struct tm *prv_tm) {
   // Using native trig angles since we're dealing with small fractions of degrees
-  int minutes_angle = (TRIG_MAX_ANGLE * minutes / 60) - TrigQuarterAngle;
-  int hours_angle   = (TRIG_MAX_ANGLE * (s_hours % 12) / 12) + (TRIG_MAX_ANGLE * minutes / 60 / 12) - TrigQuarterAngle;
+  int angle;
 
-  if (settings.SmoothMinuteHand) {
-    minutes_angle += TRIG_MAX_ANGLE * seconds / 60 / 60;  // Sweep 1/60 of a circle over 60s
+  if (settings.DigitalHour) {
+    angle = (TRIG_MAX_ANGLE * prv_tm->tm_min / 60) - TRIG_QUARTER_ANGLE;
+    
+    if (settings.SmoothMinuteHand) {
+      angle += TRIG_MAX_ANGLE * prv_tm->tm_sec / 60 / 60;  // Sweep 1/60 of a circle over 60s
+    }
+  } else {
+    angle = (TRIG_MAX_ANGLE * (prv_tm->tm_hour % 12) / 12) + (TRIG_MAX_ANGLE * prv_tm->tm_min / 60 / 12) - TRIG_QUARTER_ANGLE;
   }
 
-  int hand_angle_native = settings.DigitalHour ? minutes_angle : hours_angle;
+  return angle;
+}
+
+// Update procedure for the main canvas layer (hour & minute hands)
+static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx) {
+  GRect bounds = layer_get_bounds(layer);
 
   #ifdef PBL_ROUND
       draw_line_hand(ctx, hand_angle_native,
@@ -2815,6 +2258,7 @@ static void prv_window_load(Window *window) {
   minutes = prv_tick_time->tm_min;
   hours = prv_tick_time->tm_hour % 12;
   s_hours = prv_tick_time->tm_hour;
+  hand_angle_native = calculate_hand_angle(prv_tick_time);
 
   Layer *window_layer = window_get_root_layer(window);
   bounds = layer_get_bounds(window_layer);
@@ -2835,10 +2279,10 @@ static void prv_window_load(Window *window) {
   });
 
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+  wakeup_service_subscribe(wakeup_handler);
 
   if (settings.SmoothMinuteHand) {
-    wakeup_service_subscribe(wakeup_handler);
-    wakeup_schedule(time(NULL) + SMOOTH_INTERVAL_SEC, SMOOTH_WAKEUP_COOKIE, false);
+    wakeup_schedule(time(NULL) + settings.MinuteHandUpdateIntervalSec, SMOOTH_WAKEUP_COOKIE, false);
   }
 
   //create layers

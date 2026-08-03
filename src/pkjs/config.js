@@ -32,10 +32,21 @@ module.exports = [
         "defaultValue": true
       },
       {
-        "type": "toggle",
-        "label": "Smooth Minute Hand",
-        "messageKey": "SmoothMinuteHand",
+        "type": "slider",
+        "label": "Minute hand updates per minute",
+        "messageKey": "MinuteHandUpdatesPerMin",
         "description": "Smoother minute hand movement at the expense of battery life",
+        "defaultValue": 1,
+        "min": 1,
+        "max": 15,
+        "step": 1
+      },
+      {
+        "type": "toggle",
+        "label": "Orbiting Complications",
+        "messageKey": "OrbitComplications",
+        "description": "Complications orbit the center of the watch face",
+        "capabilities": [ "NOT_BW" ],
         "defaultValue": false
       },
       {
