@@ -6,6 +6,11 @@
 #include <pebble-fctx/fpath.h>
 #include <pebble-fctx/ffont.h>
 
+// Turns out using ticks and quick returning on 90% of callbacks is still
+// more battery efficient than using app timer
+//#define SUB_MINUTE_USE_APPTIMER
+#define SUB_MINUTE_USE_TICK
+
 // Main window and layers
 static Window *s_window;
 static Layer *s_canvas_layer;
@@ -45,6 +50,11 @@ static int hand_angle_native;
 
 static ClaySettings settings;
 
+#ifdef SUB_MINUTE_USE_APPTIMER
+static AppTimer *sub_minute_timer = NULL;
+#elif defined(SUB_MINUTE_USE_TICK)
+static int sub_minute_interval;
+#endif
 
 // Date position struct for different platforms
 typedef struct {
@@ -464,7 +474,9 @@ static void prv_default_settings(void);
 static void prv_load_settings(void);
 static void prv_inbox_received_handler(DictionaryIterator *iter, void *context);
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed);
-static void wakeup_handler(int32_t wakeup_id, int32_t cookie);
+#if defined(SUB_MINUTE_USE_APPTIMER)
+static void apptimer_handler(void *data);
+#endif
 static void bg_update_proc(Layer *layer, GContext *ctx);
 //static void layer_update_proc_dial_digits_mask(Layer *layer, GContext * ctx);
 static void update_logo_date_battery_fctx_layer(Layer *layer, GContext * ctx);
@@ -788,9 +800,14 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     settings.SmoothMinuteHand = settings.DigitalHour && updates > 1;
     settings.MinuteHandUpdateIntervalSec = (60 + updates / 2) / updates;
 
+#if defined(SUB_MINUTE_USE_APPTIMER)
     if (settings.SmoothMinuteHand) {
-      wakeup_schedule(time(NULL) + settings.MinuteHandUpdateIntervalSec, SMOOTH_WAKEUP_COOKIE, false);
+      sub_minute_timer = app_timer_register(1000 * settings.MinuteHandUpdateIntervalSec, apptimer_handler, NULL);
     }
+    tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+#elif defined(SUB_MINUTE_USE_TICK)
+    tick_timer_service_subscribe(settings.SmoothMinuteHand ? SECOND_UNIT : MINUTE_UNIT, tick_handler);
+#endif
 
     layer_mark_dirty(s_bg_layer);
     layer_mark_dirty(s_canvas_layer);
@@ -1113,12 +1130,13 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
 
 }
 
-static void wakeup_handler(int32_t wakeup_id, int32_t cookie) {
-  if (cookie == SMOOTH_WAKEUP_COOKIE) {
-    time_t tm = time(NULL);
-    tick_handler(localtime(&tm), SECOND_UNIT);
-  }
+#if defined(SUB_MINUTE_USE_APPTIMER)
+static void apptimer_handler(void *data) {
+  sub_minute_timer = NULL;
+  time_t tm = time(NULL);
+  tick_handler(localtime(&tm), SECOND_UNIT);
 }
+#endif
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   
@@ -1126,31 +1144,43 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 
   time_t curr_time = time(NULL);
   prv_tick_time = localtime(&curr_time);
-
   bool minute_changed = units_changed & MINUTE_UNIT;
 
+#if defined(SUB_MINUTE_USE_TICK)
+  bool process_sub_min_tick = false;
+  if (settings.SmoothMinuteHand && units_changed & SECOND_UNIT) {
+    int new_interval = prv_tick_time->tm_sec / settings.MinuteHandUpdateIntervalSec;
+    process_sub_min_tick = new_interval != sub_minute_interval;
+  }
+#elif defined(SUB_MINUTE_USE_APPTIMER)
+  bool process_sub_min_tick = settings.SmoothMinuteHand && units_changed & SECOND_UNIT;
+#endif
+
   // Update hour and minute hands and the date on minute change
-  if (minute_changed || (settings.SmoothMinuteHand && units_changed & SECOND_UNIT)) {
+  if (minute_changed || process_sub_min_tick) {
     seconds = tick_time->tm_sec;
+    #if defined(SUB_MINUTE_USE_TICK)
+    sub_minute_interval = tick_time->tm_sec / settings.MinuteHandUpdateIntervalSec;
+    #endif
     minutes = tick_time->tm_min;
     hours = tick_time->tm_hour % 12;
     s_hours = tick_time->tm_hour;
     hand_angle_native = calculate_hand_angle(prv_tick_time);
 
     layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_date_battery_logo_layer);
 
-    if (minute_changed) {
-      layer_mark_dirty(s_date_battery_logo_layer);
-    }
     if (settings.EnableDate && tick_time->tm_mday != current_date) {
       current_date = tick_time->tm_mday;
       s_weekday = tick_time->tm_wday;
     }
 
+    #if defined(SUB_MINUTE_USE_APPTIMER)
     if (settings.SmoothMinuteHand && (seconds + settings.MinuteHandUpdateIntervalSec) < 60) {
-      // Schedule a wakeup for smooth minute hand movement unless the next callback is a minute tick
-      wakeup_schedule(curr_time + settings.MinuteHandUpdateIntervalSec, SMOOTH_WAKEUP_COOKIE, false);
+      // Schedule a timer for smooth minute hand movement unless the next callback is a minute tick
+      sub_minute_timer = app_timer_register(1000 * settings.MinuteHandUpdateIntervalSec, apptimer_handler, NULL);
     }
+    #endif
   }
 }
 
@@ -2332,6 +2362,9 @@ static void prv_window_load(Window *window) {
   current_date = prv_tick_time->tm_mday;
   s_weekday = prv_tick_time->tm_wday;
   seconds = prv_tick_time->tm_sec;
+  #if defined(SUB_MINUTE_USE_TICK)
+  sub_minute_interval = settings.SmoothMinuteHand ? prv_tick_time->tm_sec / settings.MinuteHandUpdateIntervalSec : 0;
+  #endif
   minutes = prv_tick_time->tm_min;
   hours = prv_tick_time->tm_hour % 12;
   s_hours = prv_tick_time->tm_hour;
@@ -2356,12 +2389,13 @@ static void prv_window_load(Window *window) {
     .pebble_app_connection_handler = bluetooth_vibe_icon
   });
 
+#if defined(SUB_MINUTE_USE_APPTIMER)
+  sub_minute_timer = app_timer_register(1000 * settings.MinuteHandUpdateIntervalSec, apptimer_handler, NULL);
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
-  wakeup_service_subscribe(wakeup_handler);
 
-  if (settings.SmoothMinuteHand) {
-    wakeup_schedule(time(NULL) + settings.MinuteHandUpdateIntervalSec, SMOOTH_WAKEUP_COOKIE, false);
-  }
+#elif defined (SUB_MINUTE_USE_TICK)
+  tick_timer_service_subscribe(settings.SmoothMinuteHand ? SECOND_UNIT : MINUTE_UNIT, tick_handler);
+#endif
 
   //create layers
   s_bg_layer = layer_create(bounds);
@@ -2399,7 +2433,14 @@ static void prv_window_unload(Window *window) {
   connection_service_unsubscribe();
   battery_state_service_unsubscribe();
   tick_timer_service_unsubscribe();
-  wakeup_cancel_all();
+
+#if defined(SUB_MINUTE_USE_APPTIMER)
+  if (sub_minute_timer) {
+    app_timer_cancel(sub_minute_timer);
+    sub_minute_timer = NULL;
+  }
+#endif
+
   layer_destroy(s_canvas_layer);
   layer_destroy(s_bg_layer);
   layer_destroy(s_dial_layer);
