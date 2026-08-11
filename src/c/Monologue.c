@@ -2,6 +2,8 @@
 #include "Monologue.h"
 #include "utils/weekday.h"
 #include "utils/MathUtils.h"
+#include "message_keys.auto.h"
+#include "src/resource_ids.auto.h"
 #include <pebble-fctx/fctx.h>
 #include <pebble-fctx/fpath.h>
 #include <pebble-fctx/ffont.h>
@@ -123,6 +125,7 @@ typedef struct {
   int SecondsCentreInnerRadius;
   int ComplicationBorderAdj;
   int ComplicationDistanceAdj;
+  int ComplicationOrbitSizeAdj;
   GRect dial_digits_mask_a[1];
   GRect dial_digits_mask_b[1];
   GRect dial_digits_mask_c[1];
@@ -201,7 +204,8 @@ static const UIConfig config = {
 .dial_digits_mask_b = {{{100-19,0},{39,27}}},
 .dial_digits_mask_c = {{{100-15,228-27},{31,27}}},
 .ComplicationBorderAdj = 4,
-.ComplicationDistanceAdj = 6
+.ComplicationDistanceAdj = 6,
+.ComplicationOrbitSizeAdj = 2,
 };
 #elif defined(PBL_PLATFORM_GABBRO)
 static const UIConfig config = {
@@ -262,7 +266,8 @@ static const UIConfig config = {
 .dial_digits_mask_b = {{{130-19,0},{39,27}}},
 .dial_digits_mask_c = {{{130-15,260-27},{31,27}}},
 .ComplicationBorderAdj = 2,
-.ComplicationDistanceAdj = 2
+.ComplicationDistanceAdj = 2,
+.ComplicationOrbitSizeAdj = 3,
 };
 #elif defined(PBL_BW)
 static const UIConfig config = {
@@ -331,7 +336,8 @@ static const UIConfig config = {
 .dial_digits_mask_b = {{{72-18,0},{36,26}}},
 .dial_digits_mask_c = {{{72-13,168-26},{28,26}}},
 .ComplicationBorderAdj = 0,
-.ComplicationDistanceAdj = 0
+.ComplicationDistanceAdj = 0,
+.ComplicationOrbitSizeAdj = 0,
 };
 #elif defined(PBL_ROUND)
 static const UIConfig config = {
@@ -392,7 +398,8 @@ static const UIConfig config = {
 .dial_digits_mask_b = {{{90-18,0},{36,26}}},
 .dial_digits_mask_c = {{{90-13,180-26},{28,26}}},
 .ComplicationBorderAdj = -1,
-.ComplicationDistanceAdj = -1
+.ComplicationDistanceAdj = -1,
+.ComplicationOrbitSizeAdj = 2,
 };
 #else // Default for other platforms
 static const UIConfig config = {
@@ -541,8 +548,8 @@ static void prv_default_settings(void) {
   snprintf(settings.BWThemeSelect, sizeof(settings.BWThemeSelect), "%s", "wh");
   snprintf(settings.ThemeSelect, sizeof(settings.ThemeSelect), "%s", "wh");
   snprintf(settings.PosLeft, sizeof(settings.PosLeft), "%s", "hr");
-  snprintf(settings.PosRight, sizeof(settings.PosRight), "%s", "ap");
-  snprintf(settings.PosTop, sizeof(settings.PosTop), "%s", "lo");
+  snprintf(settings.PosRight, sizeof(settings.PosRight), "%s", "lo");
+  snprintf(settings.PosTop, sizeof(settings.PosTop), "%s", "ap");
   snprintf(settings.PosBottom, sizeof(settings.PosBottom), "%s", "dt");
   settings.BWShadowOn = true;
   settings.ShadowOn = true;
@@ -1875,7 +1882,8 @@ static void draw_complication_border(FContext *fctxp, GPoint center) {
   if (settings.ComplicationBorderColor.argb == settings.BackgroundColor1.argb)
     return;
 
-  int radius = 5 * bounds.size.w / 32 + config.ComplicationBorderAdj;
+  int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
+  int radius = 5 * bounds.size.w / 32 + config.ComplicationBorderAdj + orbitadj;
   graphics_context_set_antialiased(fctxp->gctx, true);
   graphics_context_set_stroke_color(fctxp->gctx, settings.ComplicationBorderColor);
   graphics_context_set_stroke_width(fctxp->gctx, 1);
@@ -1890,7 +1898,8 @@ static void draw_complication_border(FContext *fctxp, GPoint center) {
 
 static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
   fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
-  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj);
+  int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
+  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj - orbitadj);
   GPoint abs_pos = relative_gpoint_to_absolute(&rel_pos);
   FPoint hour_pos = gpoint_to_fpoint(&abs_pos);
 
@@ -1928,7 +1937,8 @@ static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
 static void render_ampm_fctx(FContext *fctxp, int angle_native) {
   fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
 
-  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj);
+  int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
+  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj - orbitadj);
   GPoint abs_pos = relative_gpoint_to_absolute(&rel_pos);
   FPoint ampm_pos = gpoint_to_fpoint(&abs_pos);
 
@@ -2018,7 +2028,8 @@ static void render_battery_pct_fctx(FContext *fctxp, FPoint render_pos) {
 static void render_logo_battery_fctx(FContext *fctxp, int angle_native) {
   FPoint render_pos;
   if (settings.EnableBattery || settings.EnableLogo || settings.EnableBatteryLine) {
-    GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj);
+    int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
+    GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj - orbitadj);
     GPoint abs_pos = relative_gpoint_to_absolute(&rel_pos);
     render_pos = gpoint_to_fpoint(&abs_pos);
 
@@ -2037,7 +2048,8 @@ static void render_date_fctx(FContext *fctxp, int angle_native) {
   minutes = prv_tick_time->tm_min;
   hours = prv_tick_time->tm_hour % 12;
 
-  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj);
+  int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
+  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj - orbitadj);
   GPoint abs_pos = relative_gpoint_to_absolute(&rel_pos);
   FPoint weekday_pos = gpoint_to_fpoint(&abs_pos);
   FPoint date_pos = weekday_pos;
@@ -2081,7 +2093,6 @@ static inline int get_base_angle() {
 
 static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
   int base_angle = get_base_angle();
-  int curr_angle = base_angle;
 
   APP_LOG(APP_LOG_LEVEL_INFO, "update_logo_date_battery_fctx_layer");
   FContext fctx;
@@ -2091,23 +2102,27 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
    fctx_enable_aa(true);
   #endif
 
+  int startidx = settings.OrbitComplications ? 1 : 0;
   char* compSettings[] = { settings.PosTop, settings.PosRight, settings.PosBottom, settings.PosLeft, NULL };
-  for (char** setting = compSettings;
+  int side_angle = settings.OrbitComplications ? TRIG_7_32_ANGLE : TRIG_QUARTER_ANGLE;
+  int angles[] = { base_angle, base_angle + side_angle, base_angle + TRIG_HALF_ANGLE, base_angle - side_angle, 0 };
+  int *curr_angle = &angles[startidx];
+  for (char** setting = compSettings + startidx;
       *setting;
-      curr_angle += TRIG_QUARTER_ANGLE, setting++) {
+      curr_angle++, setting++) {
 
     char* currSetting = *setting;
 
     if (strcmp(currSetting, "hr") == 0) {
-      render_hour_digits_fctx(&fctx, curr_angle);
+      render_hour_digits_fctx(&fctx, *curr_angle);
     } else if(strcmp(currSetting, "lo") == 0) {
-      render_logo_battery_fctx(&fctx, curr_angle);
+      render_logo_battery_fctx(&fctx, *curr_angle);
     } else if (strcmp(currSetting, "dt") == 0) {
       if (settings.EnableDate)
-        render_date_fctx(&fctx, curr_angle);
+        render_date_fctx(&fctx, *curr_angle);
     } else if (strcmp(currSetting, "ap") == 0) {
       if (!clock_is_24h_style())
-        render_ampm_fctx(&fctx, curr_angle);
+        render_ampm_fctx(&fctx, *curr_angle);
     }
   }
 
@@ -2116,7 +2131,8 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
 
 static void render_battery_line(GContext *ctx, int angle_native, int s_battery_level) {
   int width_rect = (s_battery_level * config.battery_line) / 100;
-  GPoint line_center = polar_to_point_native(angle_native, bounds.size.w/4 + config.ComplicationDistanceAdj);
+  int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
+  GPoint line_center = polar_to_point_native(angle_native, bounds.size.w/4 + config.ComplicationDistanceAdj - orbitadj);
   line_center.x += bounds.size.w / 2;
   line_center.y += bounds.size.h / 2;
 
@@ -2135,19 +2151,22 @@ static void layer_update_proc_battery_line(Layer *layer, GContext *ctx) {
   int s_battery_level = battery_state_service_peek().charge_percent;
 
   int base_angle = get_base_angle();
-  int curr_angle = base_angle;
 
   // Draw battery line
+  int startidx = settings.OrbitComplications ? 1 : 0;
   char* compSettings[] = { settings.PosTop, settings.PosRight, settings.PosBottom, settings.PosLeft, NULL };
-  for (char** setting = compSettings;
+  int side_angle = settings.OrbitComplications ? TRIG_7_32_ANGLE : TRIG_QUARTER_ANGLE;
+  int angles[] = { base_angle, base_angle + side_angle, base_angle + TRIG_HALF_ANGLE, base_angle - side_angle, 0 };
+  int *curr_angle = &angles[startidx];
+  for (char** setting = compSettings + startidx;
       *setting;
-      curr_angle += TRIG_QUARTER_ANGLE, setting++) {
+      curr_angle++, setting++) {
 
     char* currSetting = *setting;
 
     if (strcmp(currSetting, "lo") == 0) {
       if (settings.EnableBatteryLine) {
-        render_battery_line(ctx, curr_angle, s_battery_level);
+        render_battery_line(ctx, *curr_angle, s_battery_level);
       }
     }
   }
@@ -2390,7 +2409,7 @@ static void prv_window_load(Window *window) {
   });
 
 #if defined(SUB_MINUTE_USE_APPTIMER)
-  sub_minute_timer = app_timer_register(1000 * settings.MinuteHandUpdateIntervalSec, apptimer_handler, NULL);
+  sub_minute_timer = app_timer_register_(1000 * settings.MinuteHandUpdateIntervalSec, apptimer_handler, NULL);
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
 
 #elif defined (SUB_MINUTE_USE_TICK)

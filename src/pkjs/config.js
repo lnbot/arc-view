@@ -144,6 +144,7 @@ module.exports = [
         "type": "select",
         "messageKey": "PosTop",
         "label": "Top Position",
+        "description": "Top position is ignored when Orbiting Complications is enabled",
         "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
             "defaultValue": "lo",
             "options": [
@@ -259,6 +260,7 @@ module.exports = [
         "type": "select",
         "messageKey": "PosTop",
         "label": "Top Position",
+        "description": "Top position is ignored when Orbiting Complications is enabled",
         "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
         "defaultValue": "lo",
             "options": [
