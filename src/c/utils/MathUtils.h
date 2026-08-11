@@ -1,6 +1,7 @@
 #pragma once
 #include <pebble.h>
 
+#define TRIG_7_32_ANGLE (7 * TRIG_MAX_ANGLE / 32)
 #define TRIG_QUARTER_ANGLE (TRIG_MAX_ANGLE / 4)
 #define TRIG_HALF_ANGLE (TRIG_MAX_ANGLE / 2)
 
