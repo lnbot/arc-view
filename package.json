@@ -160,19 +160,20 @@
           "targetPlatforms": [
             "aplite",
             "diorite",
-            "flint",
-            "basalt",
-            "chalk",
-            "emery"
+            "flint"
           ],
           "type": "font"
         },
         {
-          "file": "fonts/dripicons-v2.ttf",
-          "characterRegex": "[z]",
-          "name": "FONT_DRIPICONS_18",
-          "targetPlatforms": [ "gabbro" ],
-          "type": "font"
+          "file": "data/dripicons-v2.ffont",
+          "name": "FONT_DRIPICONS_FCTX",
+          "targetPlatforms": [
+            "basalt",
+            "chalk",
+            "emery",
+            "gabbro"
+          ],
+          "type": "raw"
         },
         {
           "file": "data/Conthrax-SemiBold2.ffont",

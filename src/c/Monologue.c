@@ -13,6 +13,10 @@
 //#define SUB_MINUTE_USE_APPTIMER
 #define SUB_MINUTE_USE_TICK
 
+#ifdef PBL_BW
+#define USE_BTQT_LAYERS
+#endif
+
 // Main window and layers
 static Window *s_window;
 static Layer *s_canvas_layer;
@@ -21,20 +25,27 @@ static Layer *s_dial_layer;
 //static Layer *s_dial_digits_layer;
 static Layer *s_date_battery_logo_layer;
 //static Layer *s_canvas_second_hand;
+#ifdef USE_BTQT_LAYERS
 static Layer *s_canvas_bt_icon;
 static Layer *s_canvas_qt_icon;
+#endif
 static Layer *s_canvas_battery;
 static GRect bounds;
 //static GRect bounds_seconds;
 // Fonts
+#ifdef PBL_BW
 static GFont
-    #ifdef PBL_BW
+
     FontDate,
     FontBattery,
     FontLogo,
     FontHour,
-    #endif
     FontBTQTIcons;
+#endif
+
+#if !defined(PBL_BW)
+static FFont* FontBTQTIconsFctx;
+#endif
 
 // Smooth interval for updating the minute hand
 const int SMOOTH_WAKEUP_COOKIE = 1;
@@ -92,6 +103,7 @@ typedef struct {
   int font_size_battery;
   int font_size_date;
   int font_size_logo;
+  int font_size_btqt;
   int six_pos_x;
   int six_pos_y;
   int twelve_pos_x;
@@ -131,12 +143,6 @@ typedef struct {
   GRect dial_digits_mask_c[1];
 } UIConfig;
 
-#ifdef PBL_PLATFORM_GABBRO
-#define RESOURCE_ID_FONT_DRIPICONS_X RESOURCE_ID_FONT_DRIPICONS_18
-#else
-#define RESOURCE_ID_FONT_DRIPICONS_X RESOURCE_ID_FONT_DRIPICONS_16
-#endif
-
 #ifdef PBL_PLATFORM_EMERY
 static const UIConfig config = {
 .BottomXPosition = 46,
@@ -171,6 +177,7 @@ static const UIConfig config = {
 .font_size_battery = 14,
 .font_size_date = 12,
 .font_size_logo = 10,
+.font_size_btqt = 14,
 .six_pos_x = 2,
 .six_pos_y = -40 + 9,
 .twelve_pos_x = - 2 + 1,
@@ -241,6 +248,7 @@ static const UIConfig config = {
 .font_size_battery = 14,
 .font_size_date = 12,
 .font_size_logo = 10,
+.font_size_btqt = 18,
 .six_pos_x = 2,
 .six_pos_y = - 40 + 9,
 .twelve_pos_x = - 2 + 1,
@@ -303,6 +311,7 @@ static const UIConfig config = {
 .font_size_battery = 10,
 .font_size_date = 9,
 .font_size_logo = 8,
+.font_size_btqt = 12,
 .six_pos_x = 2,
 .six_pos_y = - 38 + 9,
 .twelve_pos_x = - 2 + 1,
@@ -373,6 +382,7 @@ static const UIConfig config = {
 .font_size_battery = 10,
 .font_size_date = 9,
 .font_size_logo = 8,
+.font_size_btqt = 12,
 .six_pos_x = 2,
 .six_pos_y = - 38 + 9,
 .twelve_pos_x = - 2 + 1,
@@ -435,6 +445,7 @@ static const UIConfig config = {
 .font_size_battery = 10,
 .font_size_date = 9,
 .font_size_logo = 8,
+.font_size_btqt = 12,
 .six_pos_x = 2,
 .six_pos_y = - 38 + 9,
 .twelve_pos_x = - 2 + 1,
@@ -468,7 +479,8 @@ static const UIConfig config = {
 .dial_digits_mask_b = {{{72-18,0},{36,26}}},
 .dial_digits_mask_c = {{{72-13,168-26},{28,26}}},
 .ComplicationBorderAdj = 2,
-.ComplicationDistanceAdj = 2
+.ComplicationDistanceAdj = 3,
+.ComplicationOrbitSizeAdj = 2
 };
 #endif
 
@@ -490,8 +502,10 @@ static void update_logo_date_battery_fctx_layer(Layer *layer, GContext * ctx);
 static void layer_update_proc_battery_line(Layer *layer, GContext * ctx);
 //static void layer_update_proc_seconds_hand(Layer *layer, GContext * ctx);
 static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx);
+#ifdef USE_QTBT_LAYERS
 static void layer_update_proc_qt(Layer *layer, GContext *ctx);
 static void layer_update_proc_bt(Layer *layer, GContext *ctx);
+#endif
 // static void draw_fancy_hand_hour(GContext *ctx, int angle, int length, GColor fill_color, GColor border_color);
 // static void draw_fancy_hand_min(GContext *ctx, int angle, int length, GColor fill_color, GColor border_color);
 static int calculate_hand_angle(struct tm *tick_time);
@@ -571,15 +585,20 @@ static void prv_default_settings(void) {
   settings.OrbitComplications = false;
 }
 
+#ifdef USE_BTQT_LAYERS
 // Quiet time icon handler
 static void quiet_time_icon () {
     layer_set_hidden(s_canvas_qt_icon, !quiet_time_is_active());
 }
+#endif
 
 
 static void bluetooth_vibe_icon (bool connected) {
-
-   layer_set_hidden(s_canvas_bt_icon, connected);
+  #ifdef USE_BTQT_LAYERS
+  layer_set_hidden(s_canvas_bt_icon, connected);
+  #else
+  layer_mark_dirty(s_date_battery_logo_layer);
+  #endif
 
   if((!connected && !quiet_time_is_active()) ||(!connected && quiet_time_is_active() && settings.VibeOn)) {
     // Issue a vibrating alert
@@ -746,7 +765,11 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
       settings.VibeOn = true;
       //APP_LOG(APP_LOG_LEVEL_DEBUG, "Vibe on");
     }
+    #ifdef USE_QTBT_LAYERS
     layer_mark_dirty(s_canvas_bt_icon);
+    #else
+    layer_mark_dirty(s_date_battery_logo_layer);
+    #endif
   }
 
   if (addzero12_t) {
@@ -906,8 +929,12 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
                   }
                   if (bwbtqt_color_t) {
                     settings.BWBTQTColor = GColorFromHEX(bwbtqt_color_t->value->int32);
+                    #ifdef USE_QTBT_LAYERS
                     layer_mark_dirty(s_canvas_bt_icon);
                     layer_mark_dirty(s_canvas_qt_icon);
+                    #else
+                    layer_mark_dirty(s_date_battery_logo_layer);
+                    #endif
                   }
                   theme_settings_changed = true;
                   //  APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme custom selected");
@@ -1101,8 +1128,12 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
                   }
                   if (btqt_color_t) {
                     settings.BTQTColor = GColorFromHEX(btqt_color_t->value->int32);
+                    #ifdef USE_QTBT_LAYERS
                     layer_mark_dirty(s_canvas_bt_icon);
                     layer_mark_dirty(s_canvas_qt_icon);
+                    #else
+                    layer_mark_dirty(s_date_battery_logo_layer);
+                    #endif
                   }
                   theme_settings_changed = true;
                 //    APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme custom selected");
@@ -1128,8 +1159,10 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   //  layer_mark_dirty(s_dial_digits_layer);
     layer_mark_dirty(s_date_battery_logo_layer);
   //  layer_mark_dirty(s_canvas_second_hand);
+    #ifdef USE_QTBT_LAYERS
     layer_mark_dirty(s_canvas_qt_icon);
     layer_mark_dirty(s_canvas_bt_icon);
+    #endif
     layer_mark_dirty(s_canvas_battery);
   }
 
@@ -1864,6 +1897,124 @@ static void layer_update_proc_battery_line(Layer *layer, GContext *ctx) {
     }
 }
 
+//Update procedure for the Bluetooth Icon (shows when disconnected) layer
+static void layer_update_proc_bt(Layer * layer, GContext * ctx){
+   minutes = prv_tick_time->tm_min;
+   hours = prv_tick_time->tm_hour % 12;
+
+//use this for testing
+   // minutes = 30;
+   // hours = 9;
+
+      int xPosition;
+      int yPosition;
+      int textboxwidth;
+      int BTIconYOffset;
+
+        // Bottom position
+      
+      #ifdef PBL_BW
+              xPosition = config.BottomXPosition + 2;
+              yPosition = config.BTQTBottomYPosition;
+              textboxwidth = config.ShadowAndMaskWidth/2;
+              BTIconYOffset = config.BTIconYOffset;
+      #elif defined (PBL_PLATFORM_BASALT)
+              xPosition = config.BottomXPosition + 2;
+              yPosition = config.BTQTBottomYPosition;
+              textboxwidth = config.ShadowAndMaskWidth/2;
+              BTIconYOffset = config.BTIconYOffset;
+      #else
+            if(quiet_time_is_active()){
+              xPosition = config.BottomXPosition + 2;
+              yPosition = config.BTQTBottomYPosition;
+              textboxwidth = config.ShadowAndMaskWidth/2;
+              BTIconYOffset = config.BTIconYOffset;
+            }
+            else{
+              xPosition = config.BottomXPosition;
+              yPosition = config.BTQTBottomYPosition;
+              textboxwidth = config.ShadowAndMaskWidth;
+              BTIconYOffset = config.BTIconYOffset;
+            }
+        #endif
+     
+
+  GRect BTIconRect =
+    GRect(xPosition + config.xOffset + config.BTIconXOffset2, yPosition + config.yOffset + BTIconYOffset + config.BTIconYOffset2, textboxwidth, 20);
+
+
+#ifdef PBL_COLOR
+ graphics_context_set_text_color(ctx, settings.BTQTColor);
+ #else
+  graphics_context_set_text_color(ctx, settings.BWBTQTColor);
+ #endif
+
+ graphics_context_set_antialiased(ctx, true);
+ graphics_draw_text(ctx, "z", FontBTQTIcons, BTIconRect, GTextOverflowModeFill,GTextAlignmentCenter, NULL);
+
+
+}
+
+//Update procedure for the QT Icon layer (shows when Quiet time is active)
+static void layer_update_proc_qt(Layer * layer, GContext * ctx){
+
+   minutes = prv_tick_time->tm_min;
+   hours = prv_tick_time->tm_hour % 12;
+
+//use this for testing
+   // minutes = 30;
+   // hours = 9;
+
+      int xPosition;
+      int yPosition;
+      int textboxwidth;
+      int QTIconYOffset;
+
+
+   
+        // Bottom position
+      #ifdef PBL_BW
+        xPosition = config.BottomXPosition;
+        yPosition = config.BTQTBottomYPosition;
+        textboxwidth = config.ShadowAndMaskWidth;
+        QTIconYOffset = 0 - config.QTIconYOffset;
+      #elif defined (PBL_PLATFORM_BASALT)
+        xPosition = config.BottomXPosition;
+        yPosition = config.BTQTBottomYPosition;
+        textboxwidth = config.ShadowAndMaskWidth;
+        QTIconYOffset = 0 - config.QTIconYOffset;
+      #else
+       if(connection_service_peek_pebble_app_connection()){
+
+        xPosition = config.BottomXPosition;
+        yPosition = config.BTQTBottomYPosition -1;
+        textboxwidth = config.ShadowAndMaskWidth;
+        QTIconYOffset = 0 - config.QTIconYOffset;
+       }
+      else{
+        xPosition = config.BottomXPosition + config.ShadowAndMaskWidth/2 - 2;
+        yPosition = config.BTQTBottomYPosition -1 ;
+        textboxwidth = config.ShadowAndMaskWidth/2;
+        QTIconYOffset = 0 - config.QTIconYOffset;
+      }
+      #endif
+     
+
+  GRect QTIconRect =
+    GRect(xPosition + config.xOffset + config.QTIconXOffset2, yPosition + config.yOffset + QTIconYOffset + config.QTIconYOffset2, textboxwidth, 20);
+
+ quiet_time_icon(); //checks whether quiet time is active
+
+ #ifdef PBL_COLOR
+  graphics_context_set_text_color(ctx, settings.BTQTColor);
+  #else
+   graphics_context_set_text_color(ctx, settings.BWBTQTColor);
+  #endif
+  graphics_context_set_antialiased(ctx, true);
+  graphics_draw_text(ctx, "\U0000E061", FontBTQTIcons, QTIconRect, GTextOverflowModeFill,GTextAlignmentCenter, NULL);
+
+}
+
 #else   //use FCTX to antialise the digits better on all colour watches, still refers to B&W in case I change my mind later on non-APLITE watches
 
 static FPoint gpoint_to_fpoint(GPoint *gpoint) {
@@ -1894,6 +2045,27 @@ static void draw_complication_border(FContext *fctxp, GPoint center) {
     graphics_context_set_stroke_color(fctxp->gctx, settings.ComplicationShadowColor);
     graphics_draw_arc(fctxp->gctx, shadow_rect, GOvalScaleModeFitCircle, TRIG_QUARTER_ANGLE, TRIG_HALF_ANGLE + TRIG_QUARTER_ANGLE);
   }
+}
+
+static void render_btqt_fctx(FContext *fctxp, FPoint icons_bottom) {
+  char status_string[6];
+  char *status = status_string;
+
+  if (quiet_time_is_active())
+    status += snprintf(status_string, sizeof(status_string), "\U0000E061");
+  if (!connection_service_peek_pebble_app_connection())
+    *(status++) = 'z';
+  if (status_string == status)
+    return;
+  *status = '\0';
+
+  int font_size = config.font_size_btqt;
+  fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWBTQTColor, settings.BTQTColor));
+  fctx_begin_fill(fctxp);
+  fctx_set_text_em_height(fctxp, FontBTQTIconsFctx, font_size);
+  fctx_set_offset(fctxp, icons_bottom);
+  fctx_draw_string(fctxp, status_string, FontBTQTIconsFctx, GTextAlignmentCenter, FTextAnchorBottom);
+  fctx_end_fill(fctxp);
 }
 
 static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
@@ -1932,6 +2104,9 @@ static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
     fctx_draw_string(fctxp, mindraw, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
   }
   fctx_end_fill(fctxp);
+
+  hour_pos.y -= INT_TO_FIXED(config.font_size_digits / 2 - 4);
+  render_btqt_fctx(fctxp, hour_pos);
 }
 
 static void render_ampm_fctx(FContext *fctxp, int angle_native) {
@@ -2174,124 +2349,6 @@ static void layer_update_proc_battery_line(Layer *layer, GContext *ctx) {
 
 #endif
 
-//Update procedure for the Bluetooth Icon (shows when disconnected) layer
-static void layer_update_proc_bt(Layer * layer, GContext * ctx){
-   minutes = prv_tick_time->tm_min;
-   hours = prv_tick_time->tm_hour % 12;
-
-//use this for testing
-   // minutes = 30;
-   // hours = 9;
-
-      int xPosition;
-      int yPosition;
-      int textboxwidth;
-      int BTIconYOffset;
-
-        // Bottom position
-      
-      #ifdef PBL_BW
-              xPosition = config.BottomXPosition + 2;
-              yPosition = config.BTQTBottomYPosition;
-              textboxwidth = config.ShadowAndMaskWidth/2;
-              BTIconYOffset = config.BTIconYOffset;
-      #elif defined (PBL_PLATFORM_BASALT)
-              xPosition = config.BottomXPosition + 2;
-              yPosition = config.BTQTBottomYPosition;
-              textboxwidth = config.ShadowAndMaskWidth/2;
-              BTIconYOffset = config.BTIconYOffset;
-      #else
-            if(quiet_time_is_active()){
-              xPosition = config.BottomXPosition + 2;
-              yPosition = config.BTQTBottomYPosition;
-              textboxwidth = config.ShadowAndMaskWidth/2;
-              BTIconYOffset = config.BTIconYOffset;
-            }
-            else{
-              xPosition = config.BottomXPosition;
-              yPosition = config.BTQTBottomYPosition;
-              textboxwidth = config.ShadowAndMaskWidth;
-              BTIconYOffset = config.BTIconYOffset;
-            }
-        #endif
-     
-
-  GRect BTIconRect =
-    GRect(xPosition + config.xOffset + config.BTIconXOffset2, yPosition + config.yOffset + BTIconYOffset + config.BTIconYOffset2, textboxwidth, 20);
-
-
-#ifdef PBL_COLOR
- graphics_context_set_text_color(ctx, settings.BTQTColor);
- #else
-  graphics_context_set_text_color(ctx, settings.BWBTQTColor);
- #endif
-
- graphics_context_set_antialiased(ctx, true);
- graphics_draw_text(ctx, "z", FontBTQTIcons, BTIconRect, GTextOverflowModeFill,GTextAlignmentCenter, NULL);
-
-
-}
-
-//Update procedure for the QT Icon layer (shows when Quiet time is active)
-static void layer_update_proc_qt(Layer * layer, GContext * ctx){
-
-   minutes = prv_tick_time->tm_min;
-   hours = prv_tick_time->tm_hour % 12;
-
-//use this for testing
-   // minutes = 30;
-   // hours = 9;
-
-      int xPosition;
-      int yPosition;
-      int textboxwidth;
-      int QTIconYOffset;
-
-
-   
-        // Bottom position
-      #ifdef PBL_BW
-        xPosition = config.BottomXPosition;
-        yPosition = config.BTQTBottomYPosition;
-        textboxwidth = config.ShadowAndMaskWidth;
-        QTIconYOffset = 0 - config.QTIconYOffset;
-      #elif defined (PBL_PLATFORM_BASALT)
-        xPosition = config.BottomXPosition;
-        yPosition = config.BTQTBottomYPosition;
-        textboxwidth = config.ShadowAndMaskWidth;
-        QTIconYOffset = 0 - config.QTIconYOffset;
-      #else
-       if(connection_service_peek_pebble_app_connection()){
-
-        xPosition = config.BottomXPosition;
-        yPosition = config.BTQTBottomYPosition -1;
-        textboxwidth = config.ShadowAndMaskWidth;
-        QTIconYOffset = 0 - config.QTIconYOffset;
-       }
-      else{
-        xPosition = config.BottomXPosition + config.ShadowAndMaskWidth/2 - 2;
-        yPosition = config.BTQTBottomYPosition -1 ;
-        textboxwidth = config.ShadowAndMaskWidth/2;
-        QTIconYOffset = 0 - config.QTIconYOffset;
-      }
-      #endif
-     
-
-  GRect QTIconRect =
-    GRect(xPosition + config.xOffset + config.QTIconXOffset2, yPosition + config.yOffset + QTIconYOffset + config.QTIconYOffset2, textboxwidth, 20);
-
- quiet_time_icon(); //checks whether quiet time is active
-
- #ifdef PBL_COLOR
-  graphics_context_set_text_color(ctx, settings.BTQTColor);
-  #else
-   graphics_context_set_text_color(ctx, settings.BWBTQTColor);
-  #endif
-  graphics_context_set_antialiased(ctx, true);
-  graphics_draw_text(ctx, "\U0000E061", FontBTQTIcons, QTIconRect, GTextOverflowModeFill,GTextAlignmentCenter, NULL);
-
-}
-
 int calculate_hand_angle(struct tm *prv_tm) {
   // Using native trig angles since we're dealing with small fractions of degrees
   int angle;
@@ -2393,16 +2450,19 @@ static void prv_window_load(Window *window) {
   bounds = layer_get_bounds(window_layer);
 
   // Load fctx ffonts
-  Date_Font =  ffont_create_from_resource(RESOURCE_ID_FONT_DATE_FCTX);
-  FontBTQTIcons = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DRIPICONS_X));
+  Date_Font = ffont_create_from_resource(RESOURCE_ID_FONT_DATE_FCTX);
+
   //non-fctx custom fonts for B&W screens
   #ifdef PBL_BW
   FontDate = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DATE_9));
   FontBattery = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DATE_10));
   FontLogo = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DATE_8));
   FontHour = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DATE_24));
+  FontBTQTIcons = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DRIPICONS_16));
+  #else
+  FontBTQTIconsFctx = ffont_create_from_resource(RESOURCE_ID_FONT_DRIPICONS_FCTX);
   #endif
-
+  
   // Subscribe to the connection service to get Bluetooth status updates.
   connection_service_subscribe((ConnectionHandlers){
     .pebble_app_connection_handler = bluetooth_vibe_icon
@@ -2419,19 +2479,23 @@ static void prv_window_load(Window *window) {
   //create layers
   s_bg_layer = layer_create(bounds);
   s_dial_layer = layer_create(bounds);
+  #ifdef USE_BTQT_LAYERS
   s_canvas_qt_icon = layer_create(bounds);
      quiet_time_icon();
   s_canvas_bt_icon = layer_create(bounds);
     bool is_connected = connection_service_peek_pebble_app_connection();
     layer_set_hidden(s_canvas_bt_icon, is_connected);
+  #endif
   s_canvas_battery = layer_create(bounds);
   s_canvas_layer = layer_create(bounds);
   s_date_battery_logo_layer = layer_create(bounds);
 
   // Change the order here
   layer_add_child(window_layer, s_bg_layer); //backforound, circles, major tick shoadow &tickmask
+  #ifdef USE_BTQT_LAYERS
   layer_add_child(window_layer, s_canvas_bt_icon);
   layer_add_child(window_layer, s_canvas_qt_icon);
+  #endif
   layer_add_child(window_layer, s_date_battery_logo_layer); //fctx version of text
   layer_add_child(window_layer, s_canvas_battery); //battery line
   layer_add_child(window_layer, s_canvas_layer);  //hour and minute hands
@@ -2439,8 +2503,10 @@ static void prv_window_load(Window *window) {
   bluetooth_vibe_icon(connection_service_peek_pebble_app_connection());
 
   layer_set_update_proc(s_bg_layer, bg_update_proc);
+  #ifdef USE_BTQT_LAYERS
   layer_set_update_proc(s_canvas_bt_icon, layer_update_proc_bt);
   layer_set_update_proc(s_canvas_qt_icon, layer_update_proc_qt);
+  #endif
   layer_set_update_proc(s_date_battery_logo_layer, update_logo_date_battery_fctx_layer);
   layer_set_update_proc(s_canvas_battery, layer_update_proc_battery_line);
   layer_set_update_proc(s_canvas_layer, hour_min_hands_canvas_update_proc);
@@ -2464,8 +2530,10 @@ static void prv_window_unload(Window *window) {
   layer_destroy(s_bg_layer);
   layer_destroy(s_dial_layer);
   layer_destroy(s_canvas_battery);
+  #ifdef USE_BTQT_LAYERS
   layer_destroy(s_canvas_bt_icon);
   layer_destroy(s_canvas_qt_icon);
+  #endif
   layer_destroy(s_date_battery_logo_layer);
   ffont_destroy(Date_Font);
   #ifdef PBL_BW
@@ -2473,8 +2541,10 @@ static void prv_window_unload(Window *window) {
   fonts_unload_custom_font(FontBattery);
   fonts_unload_custom_font(FontLogo);
   fonts_unload_custom_font(FontHour);
-  #endif
   fonts_unload_custom_font(FontBTQTIcons);
+  #else
+  ffont_destroy(FontBTQTIconsFctx);
+  #endif
 }
 
 static void prv_init(void) {
