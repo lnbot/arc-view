@@ -1247,6 +1247,33 @@ static void draw_hand_center(GContext *ctx, GColor outer_color, GColor inner_col
 
 }
 
+static void draw_minute_pin(GContext *ctx, int minute, GColor color) {
+  static const int pin_length = 12; // Halfway between major and minor tick lengths
+  static const int pin_half_angle = DEG_TO_TRIGANGLE(35); // Half of the angle for the pin's width
+
+  int angle_native = (TRIG_MAX_ANGLE * minute / 60) - TRIG_QUARTER_ANGLE;
+  int pin_center_angle = angle_native - TRIG_QUARTER_ANGLE;
+  GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
+  GPoint edge;
+
+#ifdef PBL_ROUND
+  edge = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2);
+#else
+  if (settings.ForegroundShape) {
+    edge = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2);
+  } else {
+    GRect r = GRect(0, 0, bounds.size.w, bounds.size.h);
+    edge = angle_to_rect_edge_native(origin, angle_native, r);
+  }
+#endif
+
+  GRect pin_rect = GRect(edge.x - pin_length, edge.y - pin_length, pin_length * 2, pin_length * 2);
+
+  graphics_context_set_antialiased(ctx, true);
+  graphics_context_set_fill_color(ctx, color);
+  graphics_fill_radial(ctx, pin_rect, GOvalScaleModeFitCircle, pin_length,
+     pin_center_angle - pin_half_angle, pin_center_angle + pin_half_angle);
+}
 
 static void draw_major_tick (GContext *ctx, int angle, int length, GColor fill_color, GColor border_color) {
     GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);

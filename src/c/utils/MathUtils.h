@@ -14,6 +14,7 @@ GPoint polar_to_point_offset(GPoint offset, int angle, int distance);
 GPoint polar_to_point_offset_native(GPoint offset, int angle_native, int distance);
 double slope_from_two_points(GPoint a, GPoint b);
 
+GPoint angle_to_rect_edge_native(GPoint center, int angle_native, GRect r);
 GPoint angle_to_rect_edge(GPoint center, int angle_deg, GRect r);
 GPoint angle_to_rounded_rect_edge(GPoint center, int angle_deg, int half_w, int half_h, int r);
 GPoint angle_to_rounded_rect_edge_native(GPoint center, int angle_native, int half_w, int half_h, int r);
