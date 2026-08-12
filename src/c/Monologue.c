@@ -77,9 +77,6 @@ typedef struct {
   int LeftxPosition;
   int xOffset;
   int yOffset;
-  int xOffsetFctxWeekday;
-  int xOffsetFctxDate;
-  int yOffsetFctx;
   int xyMaskOffset;
   int xWeekdayOffset;
   int yWeekdayDateOffset;
@@ -92,26 +89,14 @@ typedef struct {
   int BTIconYOffset;
   int QTIconYOffset;
   int BatteryYOffset;
-  int BatteryYOffset2;
-  int BatteryYOffset3;
   int BatteryLineYOffset;
   int BatteryLineYOffset2;
   int LogoYOffset;
-  int LogoYOffset2;
-  int LogoYOffset3;
   int font_size_digits;
   int font_size_battery;
   int font_size_date;
   int font_size_logo;
   int font_size_btqt;
-  int six_pos_x;
-  int six_pos_y;
-  int twelve_pos_x;
-  int twelve_pos_y;
-  int date_pos_x;
-  int date_pos_y;
-  int battery_pos_z;
-  int battery_pos_y;
   int battery_line;
   int analogue_hand_a;
   int analogue_hand_b;
@@ -151,9 +136,6 @@ static const UIConfig config = {
 .LeftxPosition = -5,
 .xOffset = 22,
 .yOffset = -8,
-.xOffsetFctxWeekday = 38/2  -1,
-.xOffsetFctxDate = 22/2 + 1,
-.yOffsetFctx = 3,
 .xyMaskOffset = 6,
 .xWeekdayOffset = 2,
 .yWeekdayDateOffset = 1,
@@ -166,24 +148,14 @@ static const UIConfig config = {
 .BTIconYOffset = -21,
 .QTIconYOffset = 21,
 .BatteryYOffset = 53-4 +3-1,
-.BatteryYOffset2 = -9,
-.BatteryYOffset3 = -9,
 .BatteryLineYOffset = 66,
 .BatteryLineYOffset2 = -8+114,
 .LogoYOffset = 69+1,
-.LogoYOffset2 = -8,
-.LogoYOffset3 = -8+114,
 .font_size_digits = 36,
 .font_size_battery = 14,
 .font_size_date = 12,
 .font_size_logo = 10,
 .font_size_btqt = 14,
-.six_pos_x = 2,
-.six_pos_y = -40 + 9,
-.twelve_pos_x = - 2 + 1,
-.twelve_pos_y = -3,
-.battery_pos_z = -2,
-.battery_pos_y = 4,
 .battery_line = 63, //sized to the width of the default logo TITANIUM
 .analogue_hand_a = 1,  //was 20
 .analogue_hand_b = 28,
@@ -222,9 +194,6 @@ static const UIConfig config = {
 .LeftxPosition = 16+2,
 .xOffset = 22,
 .yOffset = -8,
-.xOffsetFctxWeekday = 38/2  -1,
-.xOffsetFctxDate = 22/2 + 1,
-.yOffsetFctx = 3,
 .xyMaskOffset = 6,
 .xWeekdayOffset = 2,
 .yWeekdayDateOffset = 1,
@@ -237,24 +206,14 @@ static const UIConfig config = {
 .BTIconYOffset = -21,
 .QTIconYOffset = 21,
 .BatteryYOffset = 53-4 +3-1,
-.BatteryYOffset2 = -9,
-.BatteryYOffset3 = -1,
 .BatteryLineYOffset = 66,
 .BatteryLineYOffset2 = -8+130,
 .LogoYOffset = 69+1+1,
-.LogoYOffset2 = -8,
-.LogoYOffset3 = -8+130,
 .font_size_digits = 44,
 .font_size_battery = 14,
 .font_size_date = 12,
 .font_size_logo = 10,
 .font_size_btqt = 16,
-.six_pos_x = 2,
-.six_pos_y = - 40 + 9,
-.twelve_pos_x = - 2 + 1,
-.twelve_pos_y = -3,
-.battery_pos_z = -2,
-.battery_pos_y = 4,
 .battery_line = 63,
 .analogue_hand_a = 3+8,
 .analogue_hand_b = 32,
@@ -285,9 +244,6 @@ static const UIConfig config = {
 .LeftxPosition = 6 - 2,
 .xOffset = 10,
 .yOffset = -7,
-.xOffsetFctxWeekday = 30/2 ,
-.xOffsetFctxDate = 16/2 +1,
-.yOffsetFctx = 2,
 .xyMaskOffset = 3,
 .xWeekdayOffset = 1,
 .yWeekdayDateOffset = 2,
@@ -300,24 +256,14 @@ static const UIConfig config = {
 .BTIconYOffset = -20,
 .QTIconYOffset = 18,
 .BatteryYOffset = 40-4,
-.BatteryYOffset2 = -5,
-.BatteryYOffset3 = -5,
 .BatteryLineYOffset = 49,
 .BatteryLineYOffset2 = -8+84,
 .LogoYOffset = 52+1,
-.LogoYOffset2 = -5,
-.LogoYOffset3 = -5+84,
 .font_size_digits = 24,
 .font_size_battery = 10,
 .font_size_date = 9,
 .font_size_logo = 8,
 .font_size_btqt = 12,
-.six_pos_x = 2,
-.six_pos_y = - 38 + 9,
-.twelve_pos_x = - 2 + 1,
-.twelve_pos_y = -2,
-.battery_pos_z = 0,
-.battery_pos_y = 4,
 .battery_line = 51,
 .analogue_hand_a = 1,
 .analogue_hand_b = 22,
@@ -356,9 +302,6 @@ static const UIConfig config = {
 .LeftxPosition = 16,
 .xOffset = 14,
 .yOffset = -7,
-.xOffsetFctxWeekday = 30/2 -1,
-.xOffsetFctxDate = 16/2 +1,
-.yOffsetFctx = 2,
 .xyMaskOffset = 4,
 .xWeekdayOffset = 1,
 .yWeekdayDateOffset = 2,
@@ -371,24 +314,14 @@ static const UIConfig config = {
 .BTIconYOffset = -20,
 .QTIconYOffset = 18,
 .BatteryYOffset = 40-4,
-.BatteryYOffset2 = -4,
-.BatteryYOffset3 = -4,
 .BatteryLineYOffset = 49,
 .BatteryLineYOffset2 = -8+90+4,
 .LogoYOffset = 52+1,
-.LogoYOffset2 = -8,
-.LogoYOffset3 = -8+90+4,
 .font_size_digits = 28,
 .font_size_battery = 10,
 .font_size_date = 9,
 .font_size_logo = 8,
 .font_size_btqt = 12,
-.six_pos_x = 2,
-.six_pos_y = - 38 + 9,
-.twelve_pos_x = - 2 + 1,
-.twelve_pos_y = -2,
-.battery_pos_z = 0,
-.battery_pos_y = 4,
 .battery_line = 51,
 .analogue_hand_a = 3+8,
 .analogue_hand_b = 22,
@@ -419,9 +352,6 @@ static const UIConfig config = {
 .LeftxPosition = 7 - 2,
 .xOffset = 10,
 .yOffset = -7,
-.xOffsetFctxWeekday = 30/2 -1,
-.xOffsetFctxDate = 16/2 +1,
-.yOffsetFctx = 2,
 .xyMaskOffset = 4,
 .xWeekdayOffset = 1,
 .yWeekdayDateOffset = 2,
@@ -434,24 +364,14 @@ static const UIConfig config = {
 .BTIconYOffset = -20,
 .QTIconYOffset = 18,
 .BatteryYOffset = 40-4,
-.BatteryYOffset2 = -7,
-.BatteryYOffset3 = -7,
 .BatteryLineYOffset = 49,
 .BatteryLineYOffset2 = -8+84+1,
 .LogoYOffset = 52+1,
-.LogoYOffset2 = -8,
-.LogoYOffset3 = -8+84,
 .font_size_digits = 24,
 .font_size_battery = 10,
 .font_size_date = 9,
 .font_size_logo = 8,
 .font_size_btqt = 12,
-.six_pos_x = 2,
-.six_pos_y = - 38 + 9,
-.twelve_pos_x = - 2 + 1,
-.twelve_pos_y = -2,
-.battery_pos_z = 0,
-.battery_pos_y = 4,
 .battery_line = 51,
 .analogue_hand_a = 1,
 .analogue_hand_b = 22,
