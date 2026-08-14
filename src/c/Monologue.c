@@ -503,6 +503,7 @@ static void prv_default_settings(void) {
   settings.SmoothMinuteHand = false;
   settings.MinuteHandUpdateIntervalSec = 60;
   settings.OrbitComplications = false;
+  settings.EnableAlarmCalendarSync = false;
 }
 
 #ifdef USE_BTQT_LAYERS
@@ -598,6 +599,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *complication_font_size_adj_t = dict_find(iter, MESSAGE_KEY_ComplicationFontSizeAdj);
   Tuple *minute_hand_updates_per_min_t = dict_find(iter, MESSAGE_KEY_MinuteHandUpdatesPerMin);
   Tuple *orbit_complications_t = dict_find(iter, MESSAGE_KEY_OrbitComplications);
+  Tuple *enable_alarm_calendar_sync_t = dict_find(iter, MESSAGE_KEY_EnableAlarmCalendarSync);
 
   if (fg_shape_t) {
     settings.ForegroundShape = fg_shape_t->value->int32 == 1;
@@ -769,6 +771,10 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     layer_mark_dirty(s_canvas_layer);
     layer_mark_dirty(s_canvas_battery);
     layer_mark_dirty(s_date_battery_logo_layer);
+  }
+
+  if (enable_alarm_calendar_sync_t) {
+    settings.EnableAlarmCalendarSync = enable_alarm_calendar_sync_t->value->int32 == 1;
   }
 
   if (bwthemeselect_t) {

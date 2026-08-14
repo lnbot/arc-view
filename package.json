@@ -23,12 +23,9 @@
     "sdkVersion": "3",
     "enableMultiJS": true,
     "targetPlatforms": [
-      "aplite",
       "basalt",
       "chalk",
-      "diorite",
       "emery",
-      "flint",
       "gabbro"
     ],
     "watchapp": {
@@ -93,7 +90,8 @@
       "BWShadowOn",
       "Font",
       "VibeOn",
-      "ForegroundShape"
+      "ForegroundShape",
+      "EnableAlarmCalendarSync"
     ],
     "resources": {
       "media": [
@@ -104,6 +102,9 @@
           "memoryFormat": "1Bit",
           "menuIcon": true,
           "targetPlatforms": [
+            "aplite",
+            "diorite",
+            "flint",
             "basalt",
             "chalk",
             "emery",

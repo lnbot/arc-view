@@ -51,6 +51,14 @@ module.exports = [
       },
       {
         "type": "toggle",
+        "label": "Alarm and Calendar Sync",
+        "messageKey": "EnableAlarmCalendarSync",
+        "description": "Show upcoming alarms and calendar events on the watch face.  Requires companion app to be installed on the phone.",
+        "capabilities": [ "NOT_BW" ],
+        "defaultValue": false
+      },
+      {
+        "type": "toggle",
         "label": "Add leading zero to 12h time",
         "messageKey": "AddZero12h",
         "defaultValue": false
