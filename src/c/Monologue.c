@@ -1,5 +1,6 @@
 #include <pebble.h>
 #include "Monologue.h"
+#include "alarm_calendar_sync.h"
 #include "utils/weekday.h"
 #include "utils/MathUtils.h"
 #include "message_keys.auto.h"
@@ -775,6 +776,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
 
   if (enable_alarm_calendar_sync_t) {
     settings.EnableAlarmCalendarSync = enable_alarm_calendar_sync_t->value->int32 == 1;
+    alarm_calendar_sync_set_enabled(settings.EnableAlarmCalendarSync);
   }
 
   if (bwthemeselect_t) {
@@ -1147,6 +1149,10 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
       sub_minute_timer = app_timer_register(1000 * settings.MinuteHandUpdateIntervalSec, apptimer_handler, NULL);
     }
     #endif
+
+    // Periodically check whether the alarm/calendar data needs a re-sync.
+    if (minute_changed)
+      alarm_calendar_sync_maybe_request_update();
   }
 }
 
@@ -2463,6 +2469,9 @@ static void prv_window_load(Window *window) {
   layer_set_update_proc(s_date_battery_logo_layer, update_logo_date_battery_fctx_layer);
   layer_set_update_proc(s_canvas_battery, layer_update_proc_battery_line);
   layer_set_update_proc(s_canvas_layer, hour_min_hands_canvas_update_proc);
+
+  // Request an alarm/calendar re-sync on load if the stored data is stale.
+  alarm_calendar_sync_maybe_request_update();
 }
 
 
@@ -2503,9 +2512,10 @@ static void prv_window_unload(Window *window) {
 static void prv_init(void) {
   prv_load_settings();
 
-  // Open AppMessage and set the message handler
-  app_message_open(512, 512);
-  app_message_register_inbox_received(prv_inbox_received_handler);
+  // Open AppMessage and set the message handler. The alarm/calendar sync module
+  // owns the inbox handler and forwards dictionaries to the settings handler.
+  alarm_calendar_sync_init(prv_inbox_received_handler);
+  alarm_calendar_sync_set_enabled(settings.EnableAlarmCalendarSync);
 
   s_window = window_create();
   window_set_window_handlers(s_window, (WindowHandlers) {
