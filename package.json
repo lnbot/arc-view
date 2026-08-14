@@ -18,8 +18,8 @@
     "pebble-fctx-compiler": "^1.2.2"
   },
   "pebble": {
-    "displayName": "monologue",
-    "uuid": "59daebe7-5e44-4e1c-a637-30c270509e0d",
+    "displayName": "monologue-orbital",
+    "uuid": "c4b040f4-ea4c-481c-8050-355006f5804d",
     "sdkVersion": "3",
     "enableMultiJS": true,
     "targetPlatforms": [
@@ -104,9 +104,6 @@
           "memoryFormat": "1Bit",
           "menuIcon": true,
           "targetPlatforms": [
-            "aplite",
-            "diorite",
-            "flint",
             "basalt",
             "chalk",
             "emery",
