@@ -24,13 +24,17 @@
 // Persist key for the alarm/calendar sync data (SETTINGS_KEY 125 is used by settings).
 #define SYNC_DATA_PERSIST_KEY 126
 
+// Update this when SyncData struct changes
+#define SYNC_DATA_VERSION 1
+
 // In-memory copy of the latest synced alarm/calendar data.
 typedef struct {
+  int      version;                     // version of this struct (for future-proofing)
   uint32_t alarm_epoch;                 // 0 = no alarm set / cleared
+  uint32_t timer_epoch;                 // 0 = no timer running / cleared
   uint32_t calendar[MAX_CALENDAR_EVENTS]; // next event epochs (0-padded beyond count)
   int      event_count;                 // number of valid entries in calendar[]
   time_t   last_updated;                // time(NULL) when data was last received
-  uint32_t timer_epoch;                 // 0 = no timer running / cleared
 } SyncData;
 
 // Initialise the module: registers the inbox handler (which processes the sync

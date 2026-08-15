@@ -17,6 +17,12 @@ static void prv_load_data(void) {
   // struct stays zeroed so a fresh SyncRequest will be triggered immediately.
   if (persist_exists(SYNC_DATA_PERSIST_KEY)) {
     persist_read_data(SYNC_DATA_PERSIST_KEY, &s_data, sizeof(s_data));
+
+    if (s_data.version != SYNC_DATA_VERSION) {
+      APP_LOG(APP_LOG_LEVEL_INFO, "AlarmCalSync: data version mismatch, clearing");
+      memset(&s_data, 0, sizeof(s_data));
+      s_data.version = SYNC_DATA_VERSION;
+    }
   }
 }
 
