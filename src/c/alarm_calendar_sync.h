@@ -12,6 +12,7 @@
 #define ALARM_CAL_SYNC_REQUEST  110  // uint8 flag, watch -> phone (request re-sync)
 #define ALARM_CAL_SYNC_ALARM    111  // uint32, phone -> watch (next alarm epoch)
 #define ALARM_CAL_SYNC_CALENDAR 112  // uint8[], phone -> watch (LE uint32 epochs, 0-terminated)
+#define ALARM_CAL_SYNC_TIMER    113  // uint32, phone -> watch (active timer completion epoch)
 
 // A calendar payload is a byte array of consecutive little-endian uint32 values
 // ending with a single zero uint32 value. Max 17 uint32 total, i.e. <= 16 events.
@@ -29,6 +30,7 @@ typedef struct {
   uint32_t calendar[MAX_CALENDAR_EVENTS]; // next event epochs (0-padded beyond count)
   int      event_count;                 // number of valid entries in calendar[]
   time_t   last_updated;                // time(NULL) when data was last received
+  uint32_t timer_epoch;                 // 0 = no timer running / cleared
 } SyncData;
 
 // Initialise the module: registers the inbox handler (which processes the sync
@@ -45,6 +47,7 @@ void alarm_calendar_sync_maybe_request_update(void);
 
 // Accessors for the in-memory data (available to the watchface).
 uint32_t alarm_calendar_sync_get_alarm(void);
+uint32_t alarm_calendar_sync_get_timer(void);
 uint32_t alarm_calendar_sync_get_event_at(int index);
 int      alarm_calendar_sync_get_event_count(void);
 time_t   alarm_calendar_sync_last_updated(void);

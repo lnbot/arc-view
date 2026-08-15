@@ -59,6 +59,8 @@ typedef struct ClaySettings {
   int MinuteHandUpdateIntervalSec;
   bool OrbitComplications;
   bool EnableAlarmCalendarSync;
+  GColor AlarmPinColor;
+  GColor CalendarPinColor;
 //  bool EnablePebbleLogo;
 //  bool EnableWatchModel;
 //  bool DigitalWatch;

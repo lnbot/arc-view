@@ -1,11 +1,10 @@
 {
-  "name": "monologue",
+  "name": "monologue-orbital",
   "author": "astosia",
   "version": "2.1.0",
   "keywords": [
     "pebble",
     "watchface",
-    "monologue",
     "color",
     "colorful",
     "shadow",
@@ -91,7 +90,9 @@
       "Font",
       "VibeOn",
       "ForegroundShape",
-      "EnableAlarmCalendarSync"
+      "EnableAlarmCalendarSync",
+      "AlarmPinColor",
+      "CalendarPinColor"
     ],
     "resources": {
       "media": [

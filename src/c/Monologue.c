@@ -31,6 +31,7 @@ static Layer *s_canvas_bt_icon;
 static Layer *s_canvas_qt_icon;
 #endif
 static Layer *s_canvas_battery;
+static Layer *s_alarm_cal_pin_layer;
 static GRect bounds;
 //static GRect bounds_seconds;
 // Fonts
@@ -53,7 +54,8 @@ const int SMOOTH_WAKEUP_COOKIE = 1;
 
 FFont* Date_Font;
 // Time and date variables
-static struct tm *prv_tick_time;
+static struct tm prv_tm;
+static struct tm *prv_tick_time = &prv_tm;
 static int current_date;
 static int s_weekday;
 static int seconds;
@@ -423,6 +425,7 @@ static void update_logo_date_battery_fctx_layer(Layer *layer, GContext * ctx);
 static void layer_update_proc_battery_line(Layer *layer, GContext * ctx);
 //static void layer_update_proc_seconds_hand(Layer *layer, GContext * ctx);
 static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx);
+static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx);
 #ifdef USE_QTBT_LAYERS
 static void layer_update_proc_qt(Layer *layer, GContext *ctx);
 static void layer_update_proc_bt(Layer *layer, GContext *ctx);
@@ -505,6 +508,8 @@ static void prv_default_settings(void) {
   settings.MinuteHandUpdateIntervalSec = 60;
   settings.OrbitComplications = false;
   settings.EnableAlarmCalendarSync = false;
+  settings.AlarmPinColor = GColorDarkCandyAppleRed;
+  settings.CalendarPinColor = GColorVividCerulean;
 }
 
 #ifdef USE_BTQT_LAYERS
@@ -601,6 +606,8 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *minute_hand_updates_per_min_t = dict_find(iter, MESSAGE_KEY_MinuteHandUpdatesPerMin);
   Tuple *orbit_complications_t = dict_find(iter, MESSAGE_KEY_OrbitComplications);
   Tuple *enable_alarm_calendar_sync_t = dict_find(iter, MESSAGE_KEY_EnableAlarmCalendarSync);
+  Tuple *alarm_pin_color_t = dict_find(iter, MESSAGE_KEY_AlarmPinColor);
+  Tuple *calendar_pin_color_t = dict_find(iter, MESSAGE_KEY_CalendarPinColor);
 
   if (fg_shape_t) {
     settings.ForegroundShape = fg_shape_t->value->int32 == 1;
@@ -777,6 +784,16 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   if (enable_alarm_calendar_sync_t) {
     settings.EnableAlarmCalendarSync = enable_alarm_calendar_sync_t->value->int32 == 1;
     alarm_calendar_sync_set_enabled(settings.EnableAlarmCalendarSync);
+  }
+
+  if (alarm_pin_color_t) {
+    settings.AlarmPinColor = GColorFromHEX(alarm_pin_color_t->value->int32);
+    settings_changed = true;
+  }
+
+  if (calendar_pin_color_t) {
+    settings.CalendarPinColor = GColorFromHEX(calendar_pin_color_t->value->int32);
+    settings_changed = true;
   }
 
   if (bwthemeselect_t) {
@@ -1078,6 +1095,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     layer_mark_dirty(s_date_battery_logo_layer);
   //  layer_mark_dirty(s_canvas_second_hand);
     layer_mark_dirty(s_canvas_battery);
+    layer_mark_dirty(s_alarm_cal_pin_layer);
   }
 
   if (theme_settings_changed) {
@@ -1111,7 +1129,8 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "tick_handler fired: %02d:%02d:%02d", tick_time->tm_hour, tick_time->tm_min, tick_time->tm_sec);
 
   time_t curr_time = time(NULL);
-  prv_tick_time = localtime(&curr_time);
+  struct tm *_tick_time = localtime(&curr_time);
+  memcpy(prv_tick_time, _tick_time, sizeof(struct tm));
   bool minute_changed = units_changed & MINUTE_UNIT;
 
 #if defined(SUB_MINUTE_USE_TICK)
@@ -1137,6 +1156,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 
     layer_mark_dirty(s_canvas_layer);
     layer_mark_dirty(s_date_battery_logo_layer);
+    layer_mark_dirty(s_alarm_cal_pin_layer);
 
     if (settings.EnableDate && tick_time->tm_mday != current_date) {
       current_date = tick_time->tm_mday;
@@ -1285,6 +1305,53 @@ static void draw_minute_pin(GContext *ctx, int minute, GColor color) {
   graphics_context_set_fill_color(ctx, color);
   graphics_fill_radial(ctx, pin_rect, GOvalScaleModeFitCircle, pin_length,
      pin_center_angle - pin_half_angle, pin_center_angle + pin_half_angle);
+}
+
+static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
+  // Only draw pins when the sync feature is enabled.
+  if (!settings.EnableAlarmCalendarSync) {
+    return;
+  }
+
+  uint32_t now = (uint32_t)time(NULL);
+
+  // Draw alarm pin (if set and within the next ~hour).
+  uint32_t alarm_epoch = alarm_calendar_sync_get_alarm();
+  if (alarm_epoch != 0) {
+    uint32_t diff = alarm_epoch - now;
+    if (diff <= 3599) {  // within the next 59 min 59 sec
+      time_t t = (time_t)alarm_epoch;
+      struct tm *alarm_tm = localtime(&t);
+      draw_minute_pin(ctx, alarm_tm->tm_min, settings.AlarmPinColor);
+    }
+  }
+
+  // Draw synced timer pin (if running and within the next ~hour), same colour
+  // as the alarm pin.
+  uint32_t timer_epoch = alarm_calendar_sync_get_timer();
+  if (timer_epoch != 0) {
+    uint32_t diff = timer_epoch - now;
+    if (diff <= 3599) {  // timer completes within the next 59 min 59 sec
+      time_t t = (time_t)timer_epoch;
+      struct tm *timer_tm = localtime(&t);
+      draw_minute_pin(ctx, timer_tm->tm_min, settings.AlarmPinColor);
+    }
+  }
+
+  // Draw calendar event pins (if any and within the next ~hour).
+  int count = alarm_calendar_sync_get_event_count();
+  for (int i = 0; i < count; i++) {
+    uint32_t event_epoch = alarm_calendar_sync_get_event_at(i);
+    if (event_epoch == 0) {
+      continue;
+    }
+    uint32_t diff = event_epoch - now;
+    if (diff <= 3599) {
+      time_t t = (time_t)event_epoch;
+      struct tm *event_tm = localtime(&t);
+      draw_minute_pin(ctx, event_tm->tm_min, settings.CalendarPinColor);
+    }
+  }
 }
 
 static void draw_major_tick (GContext *ctx, int angle, int length, GColor fill_color, GColor border_color) {
@@ -2179,9 +2246,6 @@ static void render_logo_battery_fctx(FContext *fctxp, int angle_native) {
 static void render_date_fctx(FContext *fctxp, int angle_native) {
   fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
 
-  minutes = prv_tick_time->tm_min;
-  hours = prv_tick_time->tm_hour % 12;
-
   int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
   GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj - orbitadj);
   GPoint abs_pos = relative_gpoint_to_absolute(&rel_pos);
@@ -2393,7 +2457,8 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
 
 static void prv_window_load(Window *window) {
   time_t temp = time(NULL);
-  prv_tick_time = localtime(&temp);
+  struct tm *tick_time = localtime(&temp);
+  memcpy(prv_tick_time, tick_time, sizeof(struct tm));
   current_date = prv_tick_time->tm_mday;
   s_weekday = prv_tick_time->tm_wday;
   seconds = prv_tick_time->tm_sec;
@@ -2437,6 +2502,7 @@ static void prv_window_load(Window *window) {
 
   //create layers
   s_bg_layer = layer_create(bounds);
+  s_alarm_cal_pin_layer = layer_create(bounds);
   s_dial_layer = layer_create(bounds);
   #ifdef USE_BTQT_LAYERS
   s_canvas_qt_icon = layer_create(bounds);
@@ -2451,6 +2517,7 @@ static void prv_window_load(Window *window) {
 
   // Change the order here
   layer_add_child(window_layer, s_bg_layer); //backforound, circles, major tick shoadow &tickmask
+  layer_add_child(window_layer, s_alarm_cal_pin_layer);
   #ifdef USE_BTQT_LAYERS
   layer_add_child(window_layer, s_canvas_bt_icon);
   layer_add_child(window_layer, s_canvas_qt_icon);
@@ -2462,6 +2529,7 @@ static void prv_window_load(Window *window) {
   bluetooth_vibe_icon(connection_service_peek_pebble_app_connection());
 
   layer_set_update_proc(s_bg_layer, bg_update_proc);
+  layer_set_update_proc(s_alarm_cal_pin_layer, layer_update_proc_alarm_cal_pins);
   #ifdef USE_BTQT_LAYERS
   layer_set_update_proc(s_canvas_bt_icon, layer_update_proc_bt);
   layer_set_update_proc(s_canvas_qt_icon, layer_update_proc_qt);
@@ -2489,6 +2557,7 @@ static void prv_window_unload(Window *window) {
 #endif
 
   layer_destroy(s_canvas_layer);
+  layer_destroy(s_alarm_cal_pin_layer);
   layer_destroy(s_bg_layer);
   layer_destroy(s_dial_layer);
   layer_destroy(s_canvas_battery);

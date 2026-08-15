@@ -81,11 +81,17 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
 
   if (s_enabled) {
     Tuple *alarm_t = dict_find(iter, ALARM_CAL_SYNC_ALARM);
+    Tuple *timer_t = dict_find(iter, ALARM_CAL_SYNC_TIMER);
     Tuple *calendar_t = dict_find(iter, ALARM_CAL_SYNC_CALENDAR);
     bool updated = false;
 
     if (alarm_t) {
       s_data.alarm_epoch = alarm_t->value->uint32;
+      updated = true;
+    }
+
+    if (timer_t) {
+      s_data.timer_epoch = timer_t->value->uint32;
       updated = true;
     }
 
@@ -140,6 +146,10 @@ void alarm_calendar_sync_maybe_request_update(void) {
 
 uint32_t alarm_calendar_sync_get_alarm(void) {
   return s_data.alarm_epoch;
+}
+
+uint32_t alarm_calendar_sync_get_timer(void) {
+  return s_data.timer_epoch;
 }
 
 uint32_t alarm_calendar_sync_get_event_at(int index) {

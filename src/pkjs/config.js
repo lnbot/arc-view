@@ -1,7 +1,7 @@
 module.exports = [
   {
     "type": "heading",
-    "defaultValue": "monologue"
+    "defaultValue": "monologue-orbital"
   },
   {
     "type": "text",
@@ -51,9 +51,9 @@ module.exports = [
       },
       {
         "type": "toggle",
-        "label": "Alarm and Calendar Sync",
+        "label": "Alarm, Timer, and Calendar Sync",
         "messageKey": "EnableAlarmCalendarSync",
-        "description": "Show upcoming alarms and calendar events on the watch face.  Requires companion app to be installed on the phone.",
+        "description": "Show upcoming alarms, timers, and calendar events on the watch face.  Requires companion app to be installed on the phone.",
         "capabilities": [ "NOT_BW" ],
         "defaultValue": false
       },
@@ -504,6 +504,22 @@ module.exports = [
         "label": "Quiet Time and Bluetooth Icon Colour",
         "messageKey": "BTQTColor",
         "defaultValue": "000000"
+      },
+      {
+        "type": "color",
+        "label": "Alarm and Timer Pin Colour",
+        "messageKey": "AlarmPinColor",
+        "defaultValue": "FF8800",
+        "allowGray": false,
+        "sunlight": false
+      },
+      {
+        "type": "color",
+        "label": "Calendar Pin Colour",
+        "messageKey": "CalendarPinColor",
+        "defaultValue": "0055FF",
+        "allowGray": false,
+        "sunlight": false
       }
     ]
   },
