@@ -1,0 +1,7 @@
+/.*/
+/.lock*
+/_*/
+/build
+/node_modules
+/package-lock.json
+*.swp
