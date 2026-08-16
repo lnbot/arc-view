@@ -1293,11 +1293,11 @@ static void draw_hand_center(GContext *ctx, GColor outer_color, GColor inner_col
 
 }
 
-static void draw_minute_pin(GContext *ctx, int minute, GColor color) {
+static void draw_event_pin(GContext *ctx, int minute, int second, GColor color) {
   static const int pin_length = 12; // Halfway between major and minor tick lengths
   static const int pin_half_angle = DEG_TO_TRIGANGLE(35); // Half of the angle for the pin's width
 
-  int angle_native = (TRIG_MAX_ANGLE * minute / 60) - TRIG_QUARTER_ANGLE;
+  int angle_native = (TRIG_MAX_ANGLE * minute / 60) + (TRIG_MAX_ANGLE * second / 3600) - TRIG_QUARTER_ANGLE;
   int pin_center_angle = angle_native - TRIG_QUARTER_ANGLE;
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
   GPoint edge;
@@ -1336,7 +1336,7 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
     if (diff <= 3599) {  // within the next 59 min 59 sec
       time_t t = (time_t)alarm_epoch;
       struct tm *alarm_tm = localtime(&t);
-      draw_minute_pin(ctx, alarm_tm->tm_min, settings.AlarmPinColor);
+      draw_event_pin(ctx, alarm_tm->tm_min, 0, settings.AlarmPinColor);
     }
   }
 
@@ -1348,7 +1348,7 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
     if (diff <= 3599) {  // timer completes within the next 59 min 59 sec
       time_t t = (time_t)timer_epoch;
       struct tm *timer_tm = localtime(&t);
-      draw_minute_pin(ctx, timer_tm->tm_min, settings.AlarmPinColor);
+      draw_event_pin(ctx, timer_tm->tm_min, timer_tm->tm_sec, settings.AlarmPinColor);
     }
   }
 
@@ -1363,7 +1363,7 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
     if (diff <= 3599) {
       time_t t = (time_t)event_epoch;
       struct tm *event_tm = localtime(&t);
-      draw_minute_pin(ctx, event_tm->tm_min, settings.CalendarPinColor);
+      draw_event_pin(ctx, event_tm->tm_min, 0, settings.CalendarPinColor);
     }
   }
 }

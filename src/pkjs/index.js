@@ -63,14 +63,24 @@ function timelineRequest(pin, type) {
 function insertPin(target, epoch) {
   var cfg = PIN_CONFIG[target];
   if (!cfg) { return; }
+  var timestr = new Date(epoch * 1000).toISOString();
   timelineRequest({
     id: cfg.id,
-    time: new Date(epoch * 1000).toISOString(),
+    time: timestr,
     layout: {
       type: 'genericPin',
       title: cfg.title,
       tinyIcon: cfg.tinyIcon
-    }
+    },
+    reminders: [{
+      time: timestr,
+      layout: {
+        type: 'genericReminder',
+        title: cfg.title,
+        subtitle: "Time's up!",
+        tinyIcon: cfg.tinyIcon
+      },
+    }]
   }, 'PUT');
 }
 

@@ -61,7 +61,7 @@ module.exports = [
         "type": "toggle",
         "label": "Alarm Timeline Pin",
         "messageKey": "TimelineAlarmPin",
-        "description": "Place a 'Synced phone alarm' pin on the Timeline whenever the companion syncs a new alarm time.  The old pin is removed when the time changes.",
+        "description": "Place a 'Phone alarm' pin on the Timeline whenever a new alarm time is synced.  Expired and deleted alarms are removed from the timeline.",
         "capabilities": [ "NOT_BW" ],
         "defaultValue": false
       },
@@ -69,7 +69,7 @@ module.exports = [
         "type": "toggle",
         "label": "Timer Timeline Pin",
         "messageKey": "TimelineTimerPin",
-        "description": "Place a 'Synced phone timer' pin on the Timeline whenever the companion syncs a timer.  The old pin is removed when the time changes.",
+        "description": "Place a 'Phone timer' pin on the Timeline whenever a new timer is synced.  Expired and deleted timers are removed from the timeline.",
         "capabilities": [ "NOT_BW" ],
         "defaultValue": false
       },
