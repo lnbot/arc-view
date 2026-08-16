@@ -14,6 +14,15 @@
 #define ALARM_CAL_SYNC_CALENDAR 112  // uint8[], phone -> watch (LE uint32 epochs, 0-terminated)
 #define ALARM_CAL_SYNC_TIMER    113  // uint32, phone -> watch (active timer completion epoch)
 
+// Timeline pin inserts/deletes use the auto-generated MESSAGE_KEY_PinCreate /
+// MESSAGE_KEY_PinDelete / MESSAGE_KEY_PinTarget, defined in package.json
+// "messageKeys" (the compiler assigns their numeric ids). Only the sync keys
+// 110-113 above are hard-coded because they must match the external companion
+// project (lnbot/monologue-orbital-companion). The pin keys need no such
+// external agreement.
+#define ALARM_CAL_SYNC_PIN_TARGET_ALARM 0  // PIN_TARGET value: an alarm pin
+#define ALARM_CAL_SYNC_PIN_TARGET_TIMER 1  // PIN_TARGET value: a timer pin
+
 // A calendar payload is a byte array of consecutive little-endian uint32 values
 // ending with a single zero uint32 value. Max 17 uint32 total, i.e. <= 16 events.
 #define MAX_CALENDAR_EVENTS 16
@@ -44,6 +53,11 @@ void alarm_calendar_sync_init(AppMessageInboxReceived forward);
 
 // Enable/disable listening for alarm/calendar sync messages.
 void alarm_calendar_sync_set_enabled(bool enabled);
+
+// Enable/disable syncing an alarm/timer to the user's Timeline. When enabled, a
+// changed synced timestamp pushes/updates a pin; a cleared (0) timestamp removes it.
+void alarm_calendar_sync_set_alarm_pin(bool enabled);
+void alarm_calendar_sync_set_timer_pin(bool enabled);
 
 // If enabled and the stored data is older than SYNC_DATA_FRESH_SECONDS, send a
 // manual SyncRequest to the companion. Call from window load and the tick handler.

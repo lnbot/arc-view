@@ -99,4 +99,6 @@ typedef struct ClaySettings {
   bool ShadowOn;
   bool ForegroundShape;
   int ComplicationFontSizeAdj;
+  bool TimelineAlarmPin;
+  bool TimelineTimerPin;
 } __attribute__((__packed__)) ClaySettings;

@@ -59,6 +59,22 @@ module.exports = [
       },
       {
         "type": "toggle",
+        "label": "Alarm Timeline Pin",
+        "messageKey": "TimelineAlarmPin",
+        "description": "Place a 'Synced phone alarm' pin on the Timeline whenever the companion syncs a new alarm time.  The old pin is removed when the time changes.",
+        "capabilities": [ "NOT_BW" ],
+        "defaultValue": false
+      },
+      {
+        "type": "toggle",
+        "label": "Timer Timeline Pin",
+        "messageKey": "TimelineTimerPin",
+        "description": "Place a 'Synced phone timer' pin on the Timeline whenever the companion syncs a timer.  The old pin is removed when the time changes.",
+        "capabilities": [ "NOT_BW" ],
+        "defaultValue": false
+      },
+      {
+        "type": "toggle",
         "label": "Add leading zero to 12h time",
         "messageKey": "AddZero12h",
         "defaultValue": false

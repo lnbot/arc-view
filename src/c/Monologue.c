@@ -510,6 +510,8 @@ static void prv_default_settings(void) {
   settings.EnableAlarmCalendarSync = false;
   settings.AlarmPinColor = GColorDarkCandyAppleRed;
   settings.CalendarPinColor = GColorVividCerulean;
+  settings.TimelineAlarmPin = false;
+  settings.TimelineTimerPin = false;
 }
 
 #ifdef USE_BTQT_LAYERS
@@ -608,6 +610,8 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *enable_alarm_calendar_sync_t = dict_find(iter, MESSAGE_KEY_EnableAlarmCalendarSync);
   Tuple *alarm_pin_color_t = dict_find(iter, MESSAGE_KEY_AlarmPinColor);
   Tuple *calendar_pin_color_t = dict_find(iter, MESSAGE_KEY_CalendarPinColor);
+  Tuple *timeline_alarm_pin_t = dict_find(iter, MESSAGE_KEY_TimelineAlarmPin);
+  Tuple *timeline_timer_pin_t = dict_find(iter, MESSAGE_KEY_TimelineTimerPin);
 
   if (fg_shape_t) {
     settings.ForegroundShape = fg_shape_t->value->int32 == 1;
@@ -784,6 +788,16 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   if (enable_alarm_calendar_sync_t) {
     settings.EnableAlarmCalendarSync = enable_alarm_calendar_sync_t->value->int32 == 1;
     alarm_calendar_sync_set_enabled(settings.EnableAlarmCalendarSync);
+  }
+
+  if (timeline_alarm_pin_t) {
+    settings.TimelineAlarmPin = timeline_alarm_pin_t->value->int32 == 1;
+    alarm_calendar_sync_set_alarm_pin(settings.TimelineAlarmPin);
+  }
+
+  if (timeline_timer_pin_t) {
+    settings.TimelineTimerPin = timeline_timer_pin_t->value->int32 == 1;
+    alarm_calendar_sync_set_timer_pin(settings.TimelineTimerPin);
   }
 
   if (alarm_pin_color_t) {
@@ -1126,7 +1140,7 @@ static void apptimer_handler(void *data) {
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "tick_handler fired: %02d:%02d:%02d", tick_time->tm_hour, tick_time->tm_min, tick_time->tm_sec);
+  //APP_LOG(APP_LOG_LEVEL_DEBUG, "tick_handler fired: %02d:%02d:%02d", tick_time->tm_hour, tick_time->tm_min, tick_time->tm_sec);
 
   time_t curr_time = time(NULL);
   struct tm *_tick_time = localtime(&curr_time);
@@ -2585,6 +2599,8 @@ static void prv_init(void) {
   // owns the inbox handler and forwards dictionaries to the settings handler.
   alarm_calendar_sync_init(prv_inbox_received_handler);
   alarm_calendar_sync_set_enabled(settings.EnableAlarmCalendarSync);
+  alarm_calendar_sync_set_alarm_pin(settings.TimelineAlarmPin);
+  alarm_calendar_sync_set_timer_pin(settings.TimelineTimerPin);
 
   s_window = window_create();
   window_set_window_handlers(s_window, (WindowHandlers) {

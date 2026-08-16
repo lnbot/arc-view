@@ -91,6 +91,11 @@
       "VibeOn",
       "ForegroundShape",
       "EnableAlarmCalendarSync",
+      "TimelineAlarmPin",
+      "TimelineTimerPin",
+      "PinCreate",
+      "PinDelete",
+      "PinTarget",
       "AlarmPinColor",
       "CalendarPinColor"
     ],
