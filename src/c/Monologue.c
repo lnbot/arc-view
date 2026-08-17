@@ -1142,9 +1142,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   
   //APP_LOG(APP_LOG_LEVEL_DEBUG, "tick_handler fired: %02d:%02d:%02d", tick_time->tm_hour, tick_time->tm_min, tick_time->tm_sec);
 
-  time_t curr_time = time(NULL);
-  struct tm *_tick_time = localtime(&curr_time);
-  memcpy(prv_tick_time, _tick_time, sizeof(struct tm));
+  memcpy(prv_tick_time, tick_time, sizeof(struct tm));
   bool minute_changed = units_changed & MINUTE_UNIT;
 
 #if defined(SUB_MINUTE_USE_TICK)
@@ -2306,7 +2304,7 @@ static inline int get_base_angle() {
 static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
   int base_angle = get_base_angle();
 
-  APP_LOG(APP_LOG_LEVEL_INFO, "update_logo_date_battery_fctx_layer");
+  //APP_LOG(APP_LOG_LEVEL_INFO, "update_logo_date_battery_fctx_layer");
   FContext fctx;
   fctx_init_context(&fctx, ctx);
   fctx_set_color_bias(&fctx, 0);
