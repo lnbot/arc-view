@@ -149,6 +149,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     }
 
     if (calendar_t && calendar_t->type == TUPLE_BYTE_ARRAY) {
+      APP_LOG(APP_LOG_LEVEL_INFO, "AlarmCalSync: Update calendar pin (bytesize=%d)", calendar_t->length);
       prv_decode_calendar(calendar_t->value->data, calendar_t->length);
       updated = true;
     }
@@ -159,12 +160,14 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     }
 
     // Update the user Timeline when a synced alarm/timer timestamp changes.
-    APP_LOG(APP_LOG_LEVEL_INFO, "AlarmCalSync: alarm pin (%d) (%u != %u)", (int)s_alarm_pin, s_data.alarm_epoch, old_alarm);
+    //APP_LOG(APP_LOG_LEVEL_INFO, "AlarmCalSync: alarm pin (%d) (%u != %u)", (int)s_alarm_pin, s_data.alarm_epoch, old_alarm);
     if (s_alarm_pin && s_data.alarm_epoch != old_alarm) {
+      APP_LOG(APP_LOG_LEVEL_INFO, "AlarmCalSync: Update alarm pin (%u => %u)", old_alarm, s_data.alarm_epoch);
       prv_sync_alarm_pin();
     }
-    APP_LOG(APP_LOG_LEVEL_INFO, "AlarmCalSync: timer pin (%d) (%u != %u)", (int)s_timer_pin, s_data.timer_epoch, old_timer);
+    //APP_LOG(APP_LOG_LEVEL_INFO, "AlarmCalSync: timer pin (%d) (%u != %u)", (int)s_timer_pin, s_data.timer_epoch, old_timer);
     if (s_timer_pin && s_data.timer_epoch != old_timer) {
+      APP_LOG(APP_LOG_LEVEL_INFO, "AlarmCalSync: Update timer pin (%u => %u)", old_timer, s_data.timer_epoch);
       prv_sync_timer_pin();
     }
   }
@@ -174,6 +177,55 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   if (s_forward) {
     s_forward(iter, context);
   }
+}
+
+// ---------------------------------------------------------------------------
+// AppMessage event handlers (inbox dropped / outbox sent / outbox failed)
+// ---------------------------------------------------------------------------
+
+// Translate an AppMessageResult code into a short, readable name so the app log
+// is easier to interpret. Error events pass an AppMessageResult reason code.
+static const char *prv_result_name(AppMessageResult result) {
+  switch (result) {
+    case APP_MSG_OK:                            return "APP_MSG_OK";
+    case APP_MSG_SEND_TIMEOUT:                  return "APP_MSG_SEND_TIMEOUT";
+    case APP_MSG_SEND_REJECTED:                 return "APP_MSG_SEND_REJECTED";
+    case APP_MSG_NOT_CONNECTED:                 return "APP_MSG_NOT_CONNECTED";
+    case APP_MSG_APP_NOT_RUNNING:               return "APP_MSG_APP_NOT_RUNNING";
+    case APP_MSG_INVALID_ARGS:                  return "APP_MSG_INVALID_ARGS";
+    case APP_MSG_BUSY:                          return "APP_MSG_BUSY";
+    case APP_MSG_BUFFER_OVERFLOW:               return "APP_MSG_BUFFER_OVERFLOW";
+    case APP_MSG_ALREADY_RELEASED:              return "APP_MSG_ALREADY_RELEASED";
+    case APP_MSG_CALLBACK_ALREADY_REGISTERED:   return "APP_MSG_CALLBACK_ALREADY_REGISTERED";
+    case APP_MSG_CALLBACK_NOT_REGISTERED:       return "APP_MSG_CALLBACK_NOT_REGISTERED";
+    case APP_MSG_OUT_OF_MEMORY:                 return "APP_MSG_OUT_OF_MEMORY";
+    case APP_MSG_CLOSED:                        return "APP_MSG_CLOSED";
+    case APP_MSG_INTERNAL_ERROR:                return "APP_MSG_INTERNAL_ERROR";
+    default:                                    return "APP_MSG_INVALID_OTHER";
+  }
+}
+
+// An incoming message was delivered by the phone, but the inbox buffer was full
+// (or otherwise could not be processed in time), so the message was dropped.
+static void prv_inbox_dropped_handler(AppMessageResult reason, void *context) {
+  (void)context;
+  APP_LOG(APP_LOG_LEVEL_WARNING, "AppMessage: inbox message dropped (%d, %s)",
+          (int)reason, prv_result_name(reason));
+}
+
+// An outbound message was transmitted and acknowledged by the phone.
+static void prv_outbox_sent_handler(DictionaryIterator *sent, void *context) {
+  (void)sent;
+  (void)context;
+  APP_LOG(APP_LOG_LEVEL_INFO, "AppMessage: outbound message sent successfully");
+}
+
+// An outbound message was not accepted/transmitted by the phone.
+static void prv_outbox_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) {
+  (void)failed;
+  (void)context;
+  APP_LOG(APP_LOG_LEVEL_WARNING, "AppMessage: outbound message failed (%d, %s)",
+          (int)reason, prv_result_name(reason));
 }
 
 // ---------------------------------------------------------------------------
@@ -189,6 +241,9 @@ void alarm_calendar_sync_init(AppMessageInboxReceived forward) {
   // (<=68 bytes) and fits easily.
   app_message_open(512, 512);
   app_message_register_inbox_received(prv_inbox_received_handler);
+  app_message_register_inbox_dropped(prv_inbox_dropped_handler);
+  app_message_register_outbox_sent(prv_outbox_sent_handler);
+  app_message_register_outbox_failed(prv_outbox_failed_handler);
 }
 
 void alarm_calendar_sync_set_enabled(bool enabled) {
@@ -209,7 +264,7 @@ void alarm_calendar_sync_maybe_request_update(void) {
   }
 
   time_t now = time(NULL);
-  if (now - s_data.last_updated >= SYNC_DATA_FRESH_SECONDS) {
+  if ((now - s_data.last_updated) >= SYNC_DATA_FRESH_SECONDS) {
     APP_LOG(APP_LOG_LEVEL_INFO, "AlarmCalSync: data stale, requesting re-sync");
     prv_send_sync_request();
   }
