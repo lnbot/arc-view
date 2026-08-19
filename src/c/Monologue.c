@@ -54,27 +54,6 @@ static int sub_minute_interval;
 
 // Date position struct for different platforms
 typedef struct {
-  int BottomXPosition;
-  int DateBottomYPosition;
-  int BTQTBottomYPosition;
-  int LeftxPosition;
-  int xOffset;
-  int yOffset;
-  int xyMaskOffset;
-  int xWeekdayOffset;
-  int yWeekdayDateOffset;
-  int xDateOffset;
-  int ShadowAndMaskWidth;
-  int ShadowAndMaskHeight;
-  int WeekdayWidth;
-  int DateWidth;
-  int WeekdayDateHeight;
-  int BTIconYOffset;
-  int QTIconYOffset;
-  int BatteryYOffset;
-  int BatteryLineYOffset;
-  int BatteryLineYOffset2;
-  int LogoYOffset;
   int font_size_digits;
   int font_size_battery;
   int font_size_date;
@@ -84,15 +63,7 @@ typedef struct {
   int analogue_hand_a;
   int analogue_hand_b;
   int analogue_hand_c;
-  int hour_hand_a;
-  int min_hand_a;
-  int circle_radius_adj;
-  int tick_mask_radius_adj;
   int hands_shadow;
-  int QTIconXOffset2;
-  int BTIconXOffset2;
-  int QTIconYOffset2;
-  int BTIconYOffset2;
   int corner_radius_secondshand;
   int corner_radius_majortickrect;
   int corner_radius_minortickrect;
@@ -106,34 +77,10 @@ typedef struct {
   int ComplicationBorderAdj;
   int ComplicationDistanceAdj;
   int ComplicationOrbitSizeAdj;
-  GRect dial_digits_mask_a[1];
-  GRect dial_digits_mask_b[1];
-  GRect dial_digits_mask_c[1];
 } UIConfig;
 
 #ifdef PBL_PLATFORM_EMERY
 static const UIConfig config = {
-.BottomXPosition = 46,
-.DateBottomYPosition = 168,
-.BTQTBottomYPosition = 168,
-.LeftxPosition = -5,
-.xOffset = 22,
-.yOffset = -8,
-.xyMaskOffset = 6,
-.xWeekdayOffset = 2,
-.yWeekdayDateOffset = 1,
-.xDateOffset = 41,
-.ShadowAndMaskWidth = 64,
-.ShadowAndMaskHeight = 17,
-.WeekdayWidth = 38,
-.DateWidth = 22,
-.WeekdayDateHeight = 13,
-.BTIconYOffset = -21,
-.QTIconYOffset = 21,
-.BatteryYOffset = 53-4 +3-1,
-.BatteryLineYOffset = 66,
-.BatteryLineYOffset2 = -8+114,
-.LogoYOffset = 69+1,
 .font_size_digits = 36,
 .font_size_battery = 14,
 .font_size_date = 12,
@@ -143,15 +90,7 @@ static const UIConfig config = {
 .analogue_hand_a = 1,  //was 20
 .analogue_hand_b = 4,
 .analogue_hand_c = 20,
-.hour_hand_a = 45,
-.min_hand_a = 2,  //was 20
-.circle_radius_adj = 18,
-.tick_mask_radius_adj = 12,
 .hands_shadow = 2,
-.QTIconXOffset2 =0,
-.QTIconYOffset2 = 0,
-.BTIconXOffset2 = 0,
-.BTIconYOffset2 = 0,
 .corner_radius_secondshand = 20,
 .corner_radius_majortickrect = 20,
 .corner_radius_minortickrect = 20,
@@ -162,36 +101,12 @@ static const UIConfig config = {
 .tick_inset_outer = -10,
 .SecondsCentreOuterRadius = 1,
 .SecondsCentreInnerRadius = 0,
-.dial_digits_mask_a = {{{100-15,23},{39,7}}},
-.dial_digits_mask_b = {{{100-19,0},{39,27}}},
-.dial_digits_mask_c = {{{100-15,228-27},{31,27}}},
 .ComplicationBorderAdj = 4,
 .ComplicationDistanceAdj = 6,
 .ComplicationOrbitSizeAdj = 2,
 };
 #else //defined(PBL_PLATFORM_GABBRO)
 static const UIConfig config = {
-.BottomXPosition = 46+30,
-.DateBottomYPosition = 178,
-.BTQTBottomYPosition = 178,
-.LeftxPosition = 16+2,
-.xOffset = 22,
-.yOffset = -8,
-.xyMaskOffset = 6,
-.xWeekdayOffset = 2,
-.yWeekdayDateOffset = 1,
-.xDateOffset = 41,
-.ShadowAndMaskWidth = 64,
-.ShadowAndMaskHeight = 17,
-.WeekdayWidth = 38,
-.DateWidth = 22,
-.WeekdayDateHeight = 13,
-.BTIconYOffset = -21,
-.QTIconYOffset = 21,
-.BatteryYOffset = 53-4 +3-1,
-.BatteryLineYOffset = 66,
-.BatteryLineYOffset2 = -8+130,
-.LogoYOffset = 69+1+1,
 .font_size_digits = 44,
 .font_size_battery = 17,
 .font_size_date = 15,
@@ -200,21 +115,10 @@ static const UIConfig config = {
 .battery_line = 63,
 .analogue_hand_a = 3+8,
 .analogue_hand_b = 4,
-.hour_hand_a = 60,
-.min_hand_a = 2,
-.circle_radius_adj = 17,
-.tick_mask_radius_adj = 12,
 .hands_shadow = 2,
-.QTIconXOffset2 =0,
-.QTIconYOffset2 = 0,
-.BTIconXOffset2 = 0,
-.BTIconYOffset2 = 0,
 .analogue_hand_c = 40,
 .SecondsCentreOuterRadius = 1,
 .SecondsCentreInnerRadius = 0,
-.dial_digits_mask_a = {{{130-15,23-2},{39,7+2}}},
-.dial_digits_mask_b = {{{130-19,0},{39,27}}},
-.dial_digits_mask_c = {{{130-15,260-27},{31,27}}},
 .ComplicationBorderAdj = 2,
 .ComplicationDistanceAdj = 2,
 .ComplicationOrbitSizeAdj = 3,
