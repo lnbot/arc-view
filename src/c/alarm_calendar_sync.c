@@ -170,6 +170,9 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
       APP_LOG(APP_LOG_LEVEL_INFO, "AlarmCalSync: Update timer pin (%u => %u)", old_timer, s_data.timer_epoch);
       prv_sync_timer_pin();
     }
+
+    if (updated)
+      return;
   }
 
   // Forward the dictionary to the watchface's settings handler (only one inbox
