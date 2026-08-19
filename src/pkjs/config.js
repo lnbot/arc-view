@@ -36,7 +36,7 @@ module.exports = [
         "label": "Minute hand updates per minute",
         "messageKey": "MinuteHandUpdatesPerMin",
         "description": "Smoother minute hand movement at the expense of battery life",
-        "defaultValue": 1,
+        "defaultValue": 6,
         "min": 1,
         "max": 15,
         "step": 1
@@ -47,7 +47,7 @@ module.exports = [
         "messageKey": "OrbitComplications",
         "description": "Complications orbit the center of the watch face",
         "capabilities": [ "NOT_BW" ],
-        "defaultValue": false
+        "defaultValue": true
       },
       {
         "type": "toggle",
@@ -170,7 +170,7 @@ module.exports = [
         "label": "Top Position",
         "description": "Top position is ignored when Orbiting Complications is enabled",
         "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
-            "defaultValue": "lo",
+            "defaultValue": "em",
             "options": [
           {
             "label": "Empty",
@@ -199,6 +199,7 @@ module.exports = [
         "messageKey": "PosRight",
         "label": "Right Position",
         "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
+        "defaultValue": "lo",
             "options": [
           {
             "label": "Empty",
@@ -286,7 +287,7 @@ module.exports = [
         "label": "Top Position",
         "description": "Top position is ignored when Orbiting Complications is enabled",
         "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
-        "defaultValue": "lo",
+        "defaultValue": "em",
             "options": [
           {
             "label": "Empty",
@@ -315,7 +316,7 @@ module.exports = [
         "messageKey": "PosRight",
         "label": "Right Position",
         "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
-        "defaultValue": "em",
+        "defaultValue": "lo",
             "options": [
           {
             "label": "Empty",
@@ -649,8 +650,8 @@ module.exports = [
         "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
         "label": "Hand Centre Radius",
         "messageKey": "CentreSize",
-        "defaultValue": 7,
-        "description": "Default = 7",
+        "defaultValue": 1,
+        "description": "Default = 1",
         "min": 1,
         "max": 11,
         "step": 1
@@ -660,8 +661,8 @@ module.exports = [
         "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
         "label": "Hand Centre Radius",
         "messageKey": "CentreSize",
-        "defaultValue": 9,
-        "description": "Default = 9",
+        "defaultValue": 1,
+        "description": "Default = 1",
         "min": 1,
         "max": 15,
         "step": 1
@@ -671,8 +672,8 @@ module.exports = [
         "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
         "label": "Hand Centre Inner Radius",
         "messageKey": "InnerCentreSize",
-        "defaultValue": 1,
-        "description": "Default = 1",
+        "defaultValue": 0,
+        "description": "Default = 0",
         "min": 0,
         "max": 9,
         "step": 1
@@ -682,8 +683,8 @@ module.exports = [
         "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
         "label": "Hand Centre Inner Radius",
         "messageKey": "InnerCentreSize",
-        "defaultValue": 2,
-        "description": "Default = 2",
+        "defaultValue": 0,
+        "description": "Default = 0",
         "min": 0,
         "max": 9,
         "step": 1
@@ -692,8 +693,8 @@ module.exports = [
         "type": "slider",
         "label": "Hand End Radius",
         "messageKey": "BackSize",
-        "defaultValue": 4,
-        "description": "Default = 4",
+        "defaultValue": 0,
+        "description": "Default = 0",
         "min": 0,
         "max": 9,
         "step": 1
@@ -703,8 +704,8 @@ module.exports = [
         "label": "Hand End Length",
         "messageKey": "BackLen",
         "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
-        "defaultValue": 28,
-        "description": "Default = 28",
+        "defaultValue": 4,
+        "description": "Default = 4",
         "min": 0,
         "max": 40,
         "step": 2
@@ -714,8 +715,8 @@ module.exports = [
         "label": "Hand End Length",
         "messageKey": "BackLen",
         "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
-        "defaultValue": 22,
-        "description": "Default = 22",
+        "defaultValue": 4,
+        "description": "Default = 4",
         "min": 0,
         "max": 30,
         "step": 2

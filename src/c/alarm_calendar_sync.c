@@ -259,7 +259,7 @@ void alarm_calendar_sync_set_timer_pin(bool enabled) {
 }
 
 void alarm_calendar_sync_maybe_request_update(void) {
-  if (!s_enabled) {
+  if (!s_enabled || !connection_service_peek_pebble_app_connection()) {
     return;
   }
 
