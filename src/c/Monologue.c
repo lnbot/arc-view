@@ -22,7 +22,7 @@
 static Window *s_window;
 static Layer *s_canvas_layer;
 static Layer *s_bg_layer;
-static Layer *s_dial_layer;
+//static Layer *s_dial_layer;
 //static Layer *s_dial_digits_layer;
 static Layer *s_date_battery_logo_layer;
 //static Layer *s_canvas_second_hand;
@@ -1104,7 +1104,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   if (settings_changed) {
     layer_mark_dirty(s_bg_layer);
     layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_dial_layer);
+    //layer_mark_dirty(s_dial_layer);
    // layer_mark_dirty(s_dial_digits_layer);
     layer_mark_dirty(s_date_battery_logo_layer);
   //  layer_mark_dirty(s_canvas_second_hand);
@@ -1115,7 +1115,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   if (theme_settings_changed) {
     layer_mark_dirty(s_bg_layer);
     layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_dial_layer);
+    //layer_mark_dirty(s_dial_layer);
   //  layer_mark_dirty(s_dial_digits_layer);
     layer_mark_dirty(s_date_battery_logo_layer);
   //  layer_mark_dirty(s_canvas_second_hand);
@@ -2515,7 +2515,7 @@ static void prv_window_load(Window *window) {
   //create layers
   s_bg_layer = layer_create(bounds);
   s_alarm_cal_pin_layer = layer_create(bounds);
-  s_dial_layer = layer_create(bounds);
+  //s_dial_layer = layer_create(bounds);
   #ifdef USE_BTQT_LAYERS
   s_canvas_qt_icon = layer_create(bounds);
      quiet_time_icon();
@@ -2571,7 +2571,7 @@ static void prv_window_unload(Window *window) {
   layer_destroy(s_canvas_layer);
   layer_destroy(s_alarm_cal_pin_layer);
   layer_destroy(s_bg_layer);
-  layer_destroy(s_dial_layer);
+  //layer_destroy(s_dial_layer);
   layer_destroy(s_canvas_battery);
   #ifdef USE_BTQT_LAYERS
   layer_destroy(s_canvas_bt_icon);
