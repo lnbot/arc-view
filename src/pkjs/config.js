@@ -134,7 +134,6 @@ module.exports = [
         "type": "slider",
         "label": "Complication Font Size Adjustment",
         "messageKey": "ComplicationFontSizeAdj",
-        "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
         "defaultValue": 0,
         "description": "Default = 0",
         "min": -5,
@@ -169,124 +168,6 @@ module.exports = [
         "messageKey": "PosTop",
         "label": "Top Position",
         "description": "Top position is ignored when Orbiting Complications is enabled",
-        "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
-            "defaultValue": "em",
-            "options": [
-          {
-            "label": "Empty",
-            "value": "em"
-          },
-          {
-            "label": "Time Digits",
-            "value": "hr"
-          },
-          {
-            "label": "AM/PM marker",
-            "value": "ap"
-          },
-          {
-            "label": "Date",
-            "value": "dt"
-          },
-          {
-            "label": "Battery & Logo",
-            "value": "lo"
-          }
-        ]
-        },
-        {
-        "type": "select",
-        "messageKey": "PosRight",
-        "label": "Right Position",
-        "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
-        "defaultValue": "lo",
-            "options": [
-          {
-            "label": "Empty",
-            "value": "em"
-          },
-          {
-            "label": "Time Digits",
-            "value": "hr"
-          },
-          {
-            "label": "AM/PM marker",
-            "value": "ap"
-          },
-          {
-            "label": "Date",
-            "value": "dt"
-          },
-          {
-            "label": "Battery & Logo",
-            "value": "lo"
-          }
-        ]
-        },
-        {
-        "type": "select",
-        "messageKey": "PosBottom",
-        "label": "Bottom Position",
-        "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
-        "defaultValue": "dt",
-            "options": [
-          {
-            "label": "Empty",
-            "value": "em"
-          },
-          {
-            "label": "Time Digits",
-            "value": "hr"
-          },
-          {
-            "label": "AM/PM marker",
-            "value": "ap"
-          },
-          {
-            "label": "Date",
-            "value": "dt"
-          },
-          {
-            "label": "Battery & Logo",
-            "value": "lo"
-          }
-        ]
-        },
-        {
-        "type": "select",
-        "messageKey": "PosLeft",
-        "label": "Left Position",
-        "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
-        "defaultValue": "hr",
-            "options": [
-          {
-            "label": "Empty",
-            "value": "em"
-          },
-          {
-            "label": "Time Digits",
-            "value": "hr"
-          },
-          {
-            "label": "AM/PM marker",
-            "value": "ap"
-          },
-          {
-            "label": "Date",
-            "value": "dt"
-          },
-          {
-            "label": "Battery & Logo",
-            "value": "lo"
-          }
-        ]
-        },
-        {
-        "type": "select",
-        "messageKey": "PosTop",
-        "label": "Top Position",
-        "description": "Top position is ignored when Orbiting Complications is enabled",
-        "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
         "defaultValue": "em",
             "options": [
           {
@@ -315,7 +196,6 @@ module.exports = [
         "type": "select",
         "messageKey": "PosRight",
         "label": "Right Position",
-        "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
         "defaultValue": "lo",
             "options": [
           {
@@ -344,7 +224,6 @@ module.exports = [
         "type": "select",
         "messageKey": "PosBottom",
         "label": "Bottom Position",
-        "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
         "defaultValue": "dt",
             "options": [
           {
@@ -373,7 +252,6 @@ module.exports = [
         "type": "select",
         "messageKey": "PosLeft",
         "label": "Left Position",
-        "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
         "defaultValue": "hr",
             "options": [
           {
@@ -647,18 +525,6 @@ module.exports = [
       },
       {
         "type": "slider",
-        "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
-        "label": "Hand Centre Radius",
-        "messageKey": "CentreSize",
-        "defaultValue": 1,
-        "description": "Default = 1",
-        "min": 1,
-        "max": 11,
-        "step": 1
-      },
-      {
-        "type": "slider",
-        "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
         "label": "Hand Centre Radius",
         "messageKey": "CentreSize",
         "defaultValue": 1,
@@ -669,18 +535,6 @@ module.exports = [
       },
       {
         "type": "slider",
-        "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
-        "label": "Hand Centre Inner Radius",
-        "messageKey": "InnerCentreSize",
-        "defaultValue": 0,
-        "description": "Default = 0",
-        "min": 0,
-        "max": 9,
-        "step": 1
-      },
-      {
-        "type": "slider",
-        "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
         "label": "Hand Centre Inner Radius",
         "messageKey": "InnerCentreSize",
         "defaultValue": 0,
@@ -703,22 +557,10 @@ module.exports = [
         "type": "slider",
         "label": "Hand End Length",
         "messageKey": "BackLen",
-        "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
         "defaultValue": 4,
         "description": "Default = 4",
         "min": 0,
         "max": 40,
-        "step": 2
-      },
-      {
-        "type": "slider",
-        "label": "Hand End Length",
-        "messageKey": "BackLen",
-        "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
-        "defaultValue": 4,
-        "description": "Default = 4",
-        "min": 0,
-        "max": 30,
         "step": 2
       }
     ]
