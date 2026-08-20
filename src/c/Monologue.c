@@ -126,7 +126,7 @@ static const UIConfig config = {
 .ComplicationBorderAdj = 2,
 .ComplicationDistanceAdj = 2,
 .ComplicationOrbitSizeAdj = 3,
-.ComplicationWedgeSizeAdj = 2,
+.ComplicationWedgeSizeAdj = 1,
 .ComplicationWedgeDistanceAdj = 4,
 };
 #endif
@@ -1052,6 +1052,8 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
 }
 
 static void draw_radial_line(GContext *ctx, int angle_native, int length, GColor border_color) {
+  // Pebble SDK draw angles are offset by 90 degrees compared to ours, so keep it consistent here
+  angle_native -= TRIG_QUARTER_ANGLE;
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
   GPoint p1 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 );
   GPoint p2 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 - length);
@@ -1507,24 +1509,29 @@ static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx) {
 
 }
 
+#define WEDGE_SWEEP_ANGLE TRIG_7_32_ANGLE
+// Max number of minutes swept by 7/32 of a circle, rounded up
+#define WEDGE_SWEEP_MINUTES ((60 + 7) + 31 / 32)
+
 ///update procedure for background
 static void bg_update_proc(Layer *layer, GContext *ctx) {
 
   GRect bounds = layer_get_bounds(layer);
 
   GRect Background = GRect(0, 0, bounds.size.w, bounds.size.h);
-  int wedge_start_angle = hand_angle_native - TRIG_3_32_ANGLE;
-  int wedge_end_angle = hand_angle_native + TRIG_3_32_ANGLE;
-  int wedge_thickness = bounds.size.h * 5 / 32;
-  bool wedge_angles_inverted = false;
+  int wedge_start_angle = 0, wedge_end_angle = 0, wedge_thickness = 0;
 
   graphics_context_set_fill_color(ctx, settings.BackgroundColor1);
   graphics_fill_rect(ctx, Background,0,GCornersAll);
 
   if (settings.ShowTickRevealWedge && (settings.showMinorTick || settings.showMajorTick)) {
+    wedge_start_angle = hand_angle_native - (WEDGE_SWEEP_ANGLE / 2) + TRIG_QUARTER_ANGLE;
+    wedge_end_angle = hand_angle_native + (WEDGE_SWEEP_ANGLE / 2) + TRIG_QUARTER_ANGLE;
+    wedge_thickness = bounds.size.h * 5 / 32;
+
     // Draw the actual wedge and outline
     graphics_context_set_fill_color(ctx, settings.TickRevealWedgeColor);
-    graphics_fill_radial(ctx, Background, GOvalScaleModeFillCircle, wedge_thickness, wedge_start_angle + TRIG_QUARTER_ANGLE, wedge_end_angle + TRIG_QUARTER_ANGLE);
+    graphics_fill_radial(ctx, Background, GOvalScaleModeFillCircle, wedge_thickness, wedge_start_angle, wedge_end_angle);
 
     graphics_context_set_antialiased(ctx, true);
     graphics_context_set_stroke_width(ctx, 2);
@@ -1533,61 +1540,49 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
     draw_radial_line(ctx, wedge_end_angle, wedge_thickness - 1, settings.ComplicationShadowColor);
 
     GRect wedge_border_arc = GRect(Background.origin.x + wedge_thickness, Background.origin.y + wedge_thickness, Background.size.w - 2 * wedge_thickness, Background.size.h - 2 * wedge_thickness);
-    graphics_draw_arc(ctx, wedge_border_arc, GOvalScaleModeFillCircle, wedge_start_angle + TRIG_QUARTER_ANGLE, wedge_end_angle + TRIG_QUARTER_ANGLE);
+    graphics_draw_arc(ctx, wedge_border_arc, GOvalScaleModeFillCircle, wedge_start_angle, wedge_end_angle);
     #if PBL_RECT
-    graphics_draw_arc(ctx, Background, GOvalScaleModeFillCircle, wedge_start_angle + TRIG_QUARTER_ANGLE, wedge_end_angle + TRIG_QUARTER_ANGLE);
+    graphics_draw_arc(ctx, Background, GOvalScaleModeFillCircle, wedge_start_angle, wedge_end_angle);
     #endif
-
-    // Need to normalize angles for comparison below
-    wedge_start_angle = modulus(wedge_start_angle, TRIG_MAX_ANGLE);
-    wedge_end_angle = modulus(wedge_end_angle, TRIG_MAX_ANGLE);
-    wedge_angles_inverted = wedge_start_angle > wedge_end_angle;
-    if (wedge_angles_inverted) {
-      wedge_start_angle ^= wedge_end_angle;
-      wedge_end_angle ^= wedge_start_angle;
-      wedge_start_angle ^= wedge_end_angle;
-    }
   }
 
   if (settings.showMinorTick) {
     int min_start = 0, min_end = 59;
 
     if (settings.ShowTickRevealWedge) {
-      const int sweep_min = 7;  // at most 7 minutes on each side will be visible in the wedge.
-      min_start = prv_tm.tm_min - sweep_min;
-      min_end = prv_tm.tm_min + sweep_min;
+      // Only render parts under the wedge.  Alwaays start with a pos angle because div is weird with neg
+      min_start = ((wedge_start_angle + TRIG_MAX_ANGLE) * 60 + TRIG_MAX_ANGLE - 1) / TRIG_MAX_ANGLE;
+      min_end = ((wedge_end_angle + TRIG_MAX_ANGLE) * 60) / TRIG_MAX_ANGLE;
     }
 
     for (int i = min_start; i <= min_end; i++) {
       // Angles are cyclical so it doesn't matter if i is in the range 0..59
       int angle_native = i * TRIG_MAX_ANGLE / 60 - TRIG_QUARTER_ANGLE;
-
-      if (settings.ShowTickRevealWedge) {
-        // Wedge size ensures we'll never be over TRIG_MAX_ANGLE
-        int angle_comp = angle_native < 0 ? angle_native + TRIG_MAX_ANGLE : angle_native;
-
-        if (wedge_angles_inverted ^ (angle_comp < wedge_start_angle || angle_comp > wedge_end_angle)) {
-          continue; // Skip drawing minor ticks in the reveal wedge
-        }
-      }
-
       draw_minor_tick(ctx, angle_native, settings.MinorTickColor);
     }
   }
 
   if (settings.showMajorTick) {
+    int hr_start = -1;
+    int hr_end = 25;
+    bool ends_reversed = 0;
+
+    if (settings.ShowTickRevealWedge) {
+      hr_start = modulus(((wedge_start_angle + TRIG_MAX_ANGLE) * 12 + TRIG_MAX_ANGLE - 1) / TRIG_MAX_ANGLE, 12);
+      hr_end = modulus(((wedge_end_angle + TRIG_MAX_ANGLE) * 12) / TRIG_MAX_ANGLE, 12);
+      ends_reversed = hr_start > hr_end;
+    }
+
     for (int i = 0; i < 12; i++) {
       int angle_native = i * TRIG_MAX_ANGLE / 12 - TRIG_QUARTER_ANGLE;
       int tick_length = 16; // Length of the major tick
       GColor tick_color = (i == 6 || i == 12 || i == 3 || i == 9 || i == 0) ? settings.MajorTickColor : settings.MinorTickColor;
 
-      if (settings.ShowTickRevealWedge) {
-        int angle_comp = angle_native < 0 ? angle_native + TRIG_MAX_ANGLE : angle_native;
-
-        if (wedge_angles_inverted ^ (angle_comp < wedge_start_angle || angle_comp > wedge_end_angle)) {
-          tick_length = 4;  // major tick is smaller outside of the wedge
-          tick_color = settings.MinimizedMajorTickColor;
-        }
+      if (settings.ShowTickRevealWedge &&
+          ((!ends_reversed && (i < hr_start || i > hr_end)) ||
+          (ends_reversed && (i < hr_start && i > hr_end)))) {
+        tick_length = 6;  // major tick is smaller outside of the wedge
+        tick_color = settings.MinimizedMajorTickColor;
       }
 
       draw_major_tick(ctx, angle_native, tick_length, tick_color, tick_color);
