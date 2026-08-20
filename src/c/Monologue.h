@@ -101,4 +101,8 @@ typedef struct ClaySettings {
   int ComplicationFontSizeAdj;
   bool TimelineAlarmPin;
   bool TimelineTimerPin;
+  bool ShowTickRevealWedge;
+  GColor TickRevealWedgeColor;
+  GColor MinimizedMajorTickColor;
+  GColor ComplicationBackgroundColor;
 } __attribute__((__packed__)) ClaySettings;

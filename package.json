@@ -59,6 +59,7 @@
       "LogoText",
       "BackgroundColor1",
       "ComplicationBorderColor",
+      "ComplicationBackgroundColor",
       "ComplicationShadowColor",
       "MinuteHandShadowColor",
       "BWMinuteHandShadowColor",
@@ -95,7 +96,10 @@
       "PinDelete",
       "PinTarget",
       "AlarmPinColor",
-      "CalendarPinColor"
+      "CalendarPinColor",
+      "ShowTickRevealWedge",
+      "TickRevealWedgeColor",
+      "MinimizedMajorTickColor"
     ],
     "resources": {
       "media": [

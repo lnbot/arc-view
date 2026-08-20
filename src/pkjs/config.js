@@ -51,6 +51,14 @@ module.exports = [
       },
       {
         "type": "toggle",
+        "label": "Orbiting Tick Reveal Wedge",
+        "messageKey": "ShowTickRevealWedge",
+        "description": "Wedge that follows the minute hand and reveals ticks underneath. Only enabled with round watchface and orbiting complications.",
+        "capabilities": [ "NOT_BW" ],
+        "defaultValue": false
+      },
+      {
+        "type": "toggle",
         "label": "Alarm, Timer, and Calendar Sync",
         "messageKey": "EnableAlarmCalendarSync",
         "description": "Show upcoming alarms, timers, and calendar events on the watch face.  Requires companion app to be installed on the phone.",
@@ -347,9 +355,23 @@ module.exports = [
       },
       {
         "type": "color",
+        "label": "Complication Background Color",
+        "messageKey": "ComplicationBackgroundColor",
+        "description": "Set to the background color to disable",
+        "defaultValue": "FFFFFF"
+      },
+      {
+        "type": "color",
         "label": "Complication Shadow Color",
         "messageKey": "ComplicationShadowColor",
         "description": "Enabled with minute hand shadow switch",
+        "defaultValue": "FFFFFF"
+      },
+      {
+        "type": "color",
+        "label": "Tick Reveal Wedge Color",
+        "messageKey": "TickRevealWedgeColor",
+        "description": "Background color for the tick reveal wedge",
         "defaultValue": "FFFFFF"
       },
       {
@@ -368,6 +390,12 @@ module.exports = [
         "type": "color",
         "label": "Minor Tickmark Colour",
         "messageKey": "MinorTickColor",
+        "defaultValue": "000000"
+      },
+      {
+        "type": "color",
+        "label": "Minimized Major Tickmark Colour (for Reveal Wedge)",
+        "messageKey": "MinimizedMajorTickColor",
         "defaultValue": "000000"
       },
       {

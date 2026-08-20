@@ -2,6 +2,8 @@
 #include <pebble.h>
 
 #define TRIG_7_32_ANGLE (7 * TRIG_MAX_ANGLE / 32)
+#define TRIG_3_32_ANGLE (3 * TRIG_MAX_ANGLE / 32)
+#define TRIG_1_8_ANGLE (TRIG_MAX_ANGLE / 8)
 #define TRIG_QUARTER_ANGLE (TRIG_MAX_ANGLE / 4)
 #define TRIG_HALF_ANGLE (TRIG_MAX_ANGLE / 2)
 
@@ -19,3 +21,5 @@ GPoint angle_to_rect_edge(GPoint center, int angle_deg, GRect r);
 GPoint angle_to_rounded_rect_edge(GPoint center, int angle_deg, int half_w, int half_h, int r);
 GPoint angle_to_rounded_rect_edge_native(GPoint center, int angle_native, int half_w, int half_h, int r);
 GPoint point_from_edge(GPoint origin, int angle_deg, GRect r, int inset);
+
+int modulus(int a, int b);

@@ -77,6 +77,8 @@ typedef struct {
   int ComplicationBorderAdj;
   int ComplicationDistanceAdj;
   int ComplicationOrbitSizeAdj;
+  int ComplicationWedgeSizeAdj;
+  int ComplicationWedgeDistanceAdj;
 } UIConfig;
 
 #ifdef PBL_PLATFORM_EMERY
@@ -104,6 +106,8 @@ static const UIConfig config = {
 .ComplicationBorderAdj = 4,
 .ComplicationDistanceAdj = 6,
 .ComplicationOrbitSizeAdj = 2,
+.ComplicationWedgeSizeAdj = 2,
+.ComplicationWedgeDistanceAdj = 2,
 };
 #else //defined(PBL_PLATFORM_GABBRO)
 static const UIConfig config = {
@@ -122,6 +126,8 @@ static const UIConfig config = {
 .ComplicationBorderAdj = 2,
 .ComplicationDistanceAdj = 2,
 .ComplicationOrbitSizeAdj = 3,
+.ComplicationWedgeSizeAdj = 2,
+.ComplicationWedgeDistanceAdj = 4,
 };
 #endif
 
@@ -165,6 +171,7 @@ static void prv_default_settings(void) {
   snprintf(settings.LogoText, sizeof(settings.LogoText), "%s", "pebble");
   settings.BackgroundColor1 = GColorWhite;
   settings.ComplicationBorderColor = GColorLightGray;
+  settings.ComplicationBackgroundColor = GColorWhite;
   settings.ComplicationShadowColor = GColorWhite;
   settings.MinuteHandShadowColor = GColorBabyBlueEyes;
   settings.TextColor1 = GColorWhite;
@@ -176,6 +183,7 @@ static void prv_default_settings(void) {
   settings.MinutesHandColor = GColorCobaltBlue;
   settings.MinutesHandBorderColor = GColorCobaltBlue;
   settings.MajorTickColor = GColorCobaltBlue;
+  settings.MinimizedMajorTickColor = GColorCobaltBlue;
   settings.SecondsHandColor = GColorOrange;
   settings.BatteryLineColor = GColorOrange;
   settings.BWDateColor = GColorBlack;
@@ -219,6 +227,8 @@ static void prv_default_settings(void) {
   settings.CalendarPinColor = GColorVividCerulean;
   settings.TimelineAlarmPin = false;
   settings.TimelineTimerPin = false;
+  settings.ShowTickRevealWedge = false;
+  settings.TickRevealWedgeColor = GColorWhite;
 }
 
 static void bluetooth_vibe_icon (bool connected) {
@@ -251,6 +261,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *themeselect_t = dict_find(iter, MESSAGE_KEY_ThemeSelect);
   Tuple *bg_color1_t = dict_find(iter, MESSAGE_KEY_BackgroundColor1);
   Tuple *comp_border_color_t = dict_find(iter, MESSAGE_KEY_ComplicationBorderColor);
+  Tuple *comp_background_color_t = dict_find(iter, MESSAGE_KEY_ComplicationBackgroundColor);
   Tuple *comp_shadow_color_t = dict_find(iter, MESSAGE_KEY_ComplicationShadowColor);
   Tuple *bg_color2_t = dict_find(iter, MESSAGE_KEY_MinuteHandShadowColor);
   //Tuple *text_color1_t = dict_find(iter, MESSAGE_KEY_TextColor1);
@@ -297,6 +308,9 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *calendar_pin_color_t = dict_find(iter, MESSAGE_KEY_CalendarPinColor);
   Tuple *timeline_alarm_pin_t = dict_find(iter, MESSAGE_KEY_TimelineAlarmPin);
   Tuple *timeline_timer_pin_t = dict_find(iter, MESSAGE_KEY_TimelineTimerPin);
+  Tuple *show_tick_reveal_wedge_t = dict_find(iter, MESSAGE_KEY_ShowTickRevealWedge);
+  Tuple *tick_reveal_wedge_color_t = dict_find(iter, MESSAGE_KEY_TickRevealWedgeColor);
+  Tuple *minimized_major_tick_color_t = dict_find(iter, MESSAGE_KEY_MinimizedMajorTickColor);
 
   if (fg_shape_t) {
     settings.ForegroundShape = fg_shape_t->value->int32 == 1;
@@ -491,6 +505,19 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     settings_changed = true;
   }
 
+  if (show_tick_reveal_wedge_t) {
+    settings.ShowTickRevealWedge = (show_tick_reveal_wedge_t->value->int32 == 1) && settings.OrbitComplications;
+    #ifdef PBL_RECT
+    settings.ShowTickRevealWedge = settings.ShowTickRevealWedge && settings.ForegroundShape;
+    #endif
+    settings_changed = true;
+  }
+
+  if (tick_reveal_wedge_color_t) {
+    settings.TickRevealWedgeColor = GColorFromHEX(tick_reveal_wedge_color_t->value->int32);
+    settings_changed = true;
+  }
+
   if (bwthemeselect_t) {
           // Compare the string value received from the phone
           if (strcmp(bwthemeselect_t->value->cstring, "wh") == 0) {
@@ -591,6 +618,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
                         }
                     settings.BackgroundColor1 = GColorWhite;
                     settings.ComplicationBorderColor = GColorLightGray;
+                    settings.ComplicationBackgroundColor = GColorWhite;
                     settings.ComplicationShadowColor = GColorLightGray;
                     settings.MinorTickColor = GColorBabyBlueEyes;
                     settings.DateColor = GColorDarkGray;
@@ -606,6 +634,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
 
                     settings.BackgroundColor1 = GColorBlack;
                     settings.ComplicationBorderColor = GColorBlack;
+                    settings.ComplicationBackgroundColor = GColorBlack;
                     settings.ComplicationShadowColor = GColorBlack;
                     if (shadowon_t) {
                       settings.ShadowOn = shadowon_t->value->int32 == 1;
@@ -630,6 +659,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
 
                     settings.BackgroundColor1 = GColorDukeBlue;
                     settings.ComplicationBorderColor = GColorDukeBlue;
+                    settings.ComplicationBackgroundColor = GColorDukeBlue;
                     settings.ComplicationShadowColor = GColorDukeBlue;
                     if (shadowon_t) {
                       settings.ShadowOn = shadowon_t->value->int32 == 1;
@@ -654,6 +684,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
 
                     settings.BackgroundColor1 = GColorPurple;
                     settings.ComplicationBorderColor = GColorPurple;
+                    settings.ComplicationBackgroundColor = GColorPurple;
                     settings.ComplicationShadowColor = GColorPurple;
                     if (shadowon_t) {
                       settings.ShadowOn = shadowon_t->value->int32 == 1;
@@ -678,6 +709,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
 
                     settings.BackgroundColor1 = GColorBlack;
                     settings.ComplicationBorderColor = GColorBlack;
+                    settings.ComplicationBackgroundColor = GColorBlack;
                     settings.ComplicationShadowColor = GColorBlack;
                     if (shadowon_t) {
                       settings.ShadowOn = shadowon_t->value->int32 == 1;
@@ -706,6 +738,11 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
 
                   if (comp_border_color_t) {
                     settings.ComplicationBorderColor = GColorFromHEX(comp_border_color_t->value->int32);
+                    settings_changed = true;
+                  }
+
+                  if (comp_background_color_t) {
+                    settings.ComplicationBackgroundColor = GColorFromHEX(comp_background_color_t->value->int32);
                     settings_changed = true;
                   }
 
@@ -753,6 +790,12 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
                  
                   if (tick_color_t) {
                     settings.MajorTickColor = GColorFromHEX(tick_color_t->value->int32);
+                    layer_mark_dirty(s_canvas_layer);
+                    layer_mark_dirty(s_date_battery_logo_layer);
+                  }
+
+                  if (minimized_major_tick_color_t) {
+                    settings.MinimizedMajorTickColor = GColorFromHEX(minimized_major_tick_color_t->value->int32);
                     layer_mark_dirty(s_canvas_layer);
                     layer_mark_dirty(s_date_battery_logo_layer);
                   }
@@ -831,6 +874,11 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
     minutes = tick_time->tm_min;
     hours = tick_time->tm_hour % 12;
     s_hours = tick_time->tm_hour;
+
+    #ifdef SHOW_MINUTE
+    prv_tm.tm_min = minutes = SHOW_MINUTE;
+    #endif
+
     hand_angle_native = calculate_hand_angle(prv_tick_time);
 
     layer_mark_dirty(s_canvas_layer);
@@ -1003,27 +1051,34 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
   }
 }
 
-static void draw_major_tick (GContext *ctx, int angle, int length, GColor fill_color, GColor border_color) {
+static void draw_radial_line(GContext *ctx, int angle_native, int length, GColor border_color) {
+  GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
+  GPoint p1 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 );
+  GPoint p2 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 - length);
+  graphics_draw_line(ctx, p1, p2);
+}
+
+static void draw_major_tick (GContext *ctx, int angle_native, int length, GColor fill_color, GColor border_color) {
     GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
       GPoint p1;
       GPoint p2;
 
       #ifdef PBL_ROUND
-        p1 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 16 );
-        p2 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 16 + length);
+        p1 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 );
+        p2 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 - length);
       #else
         if(settings.ForegroundShape){
-          p1 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 16 );
-          p2 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 16 + length);
+          p1 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 );
+          p2 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 - length);
         }
         else{
           GRect r = GRect(0, 0, bounds.size.w, bounds.size.h);
-          GPoint edge = angle_to_rect_edge(origin, angle, r);
-          int32_t dx = cos_lookup(DEG_TO_TRIGANGLE(angle));
-          int32_t dy = sin_lookup(DEG_TO_TRIGANGLE(angle));
+          GPoint edge = angle_to_rect_edge_native(origin, angle_native, r);
+          int32_t dx = cos_lookup(angle_native);
+          int32_t dy = sin_lookup(angle_native);
           p2 = GPoint(edge.x - (int)((dx * config.tick_inset_outer) / TRIG_MAX_ANGLE),
                             edge.y - (int)((dy * config.tick_inset_outer) / TRIG_MAX_ANGLE));
-          p1 = angle_to_rounded_rect_edge(origin, angle, config.majortickrect_w, config.majortickrect_h, config.corner_radius_majortickrect);
+          p1 = angle_to_rounded_rect_edge_native(origin, angle_native, config.majortickrect_w, config.majortickrect_h, config.corner_radius_majortickrect);
         }
       #endif
  
@@ -1033,29 +1088,29 @@ static void draw_major_tick (GContext *ctx, int angle, int length, GColor fill_c
     graphics_draw_line(ctx, p1, p2);
 }
 
-static void draw_minor_tick(GContext *ctx, int angle, GColor border_color) {
+static void draw_minor_tick(GContext *ctx, int angle_native, GColor border_color) {
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
       GPoint p1;
       GPoint p2;
 
       #ifdef PBL_ROUND
           // The tick starts away from the center of the watch face.
-          p1 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 8);
+          p1 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 - 8);
           // The tick ends closer to the edge.
-          p2 = polar_to_point_offset(origin, angle, bounds.size.h / 2 );
+          p2 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 );
       #else
         if(settings.ForegroundShape){
-            p1 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 8);
-            p2 = polar_to_point_offset(origin, angle, bounds.size.h / 2 );
+            p1 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 - 8);
+            p2 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 );
           }
           else{
             GRect r = GRect(0, 0, bounds.size.w, bounds.size.h);
-            GPoint edge = angle_to_rect_edge(origin, angle, r);
-            int32_t dx = cos_lookup(DEG_TO_TRIGANGLE(angle));
-            int32_t dy = sin_lookup(DEG_TO_TRIGANGLE(angle));
+            GPoint edge = angle_to_rect_edge_native(origin, angle_native, r);
+            int32_t dx = cos_lookup(angle_native);
+            int32_t dy = sin_lookup(angle_native);
             p2 = GPoint(edge.x - (int)((dx * config.tick_inset_outer) / TRIG_MAX_ANGLE),
                               edge.y - (int)((dy * config.tick_inset_outer) / TRIG_MAX_ANGLE));
-            p1 = angle_to_rounded_rect_edge(origin, angle, config.minortickrect_w, config.minortickrect_h, config.corner_radius_minortickrect);
+            p1 = angle_to_rounded_rect_edge_native(origin, angle_native, config.minortickrect_w, config.minortickrect_h, config.corner_radius_minortickrect);
           }
       #endif
 
@@ -1080,21 +1135,34 @@ static GPoint relative_gpoint_to_absolute(GPoint *gpoint) {
               .y = bounds.size.h / 2 + gpoint->y };
 }
 
-static void draw_complication_border(FContext *fctxp, GPoint center) {
-  if (settings.ComplicationBorderColor.argb == settings.BackgroundColor1.argb)
+static void draw_complication_border_bg(FContext *fctxp, GPoint center) {
+  bool draw_border = settings.ComplicationBorderColor.argb != settings.BackgroundColor1.argb;
+  bool draw_background = settings.ComplicationBackgroundColor.argb != settings.BackgroundColor1.argb;
+
+  if (!draw_border && !draw_background)
     return;
 
   int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
-  int radius = 5 * bounds.size.w / 32 + config.ComplicationBorderAdj + orbitadj;
+  int wedgeAdj = settings.ShowTickRevealWedge ? config.ComplicationWedgeSizeAdj : 0;
+  int radius = 5 * bounds.size.w / 32 + config.ComplicationBorderAdj + orbitadj + wedgeAdj;
   graphics_context_set_antialiased(fctxp->gctx, true);
-  graphics_context_set_stroke_color(fctxp->gctx, settings.ComplicationBorderColor);
-  graphics_context_set_stroke_width(fctxp->gctx, 1);
-  graphics_draw_circle(fctxp->gctx, center, radius);
 
-  if (settings.ShadowOn && settings.ComplicationShadowColor.argb != settings.BackgroundColor1.argb) {
-    GRect shadow_rect = GRect(center.x - radius, center.y - radius + 1, 2 * radius, 2 * radius);
-    graphics_context_set_stroke_color(fctxp->gctx, settings.ComplicationShadowColor);
-    graphics_draw_arc(fctxp->gctx, shadow_rect, GOvalScaleModeFitCircle, TRIG_QUARTER_ANGLE, TRIG_HALF_ANGLE + TRIG_QUARTER_ANGLE);
+  if (draw_background) {
+    graphics_context_set_fill_color(fctxp->gctx, settings.ComplicationBackgroundColor);
+    graphics_fill_circle(fctxp->gctx, center, radius);
+  }
+
+  if (draw_border) {
+    graphics_context_set_stroke_color(fctxp->gctx, settings.ComplicationBorderColor);
+    graphics_context_set_stroke_width(fctxp->gctx, 1);
+
+    graphics_draw_circle(fctxp->gctx, center, radius);
+
+    if (settings.ShadowOn && settings.ComplicationShadowColor.argb != settings.BackgroundColor1.argb) {
+      GRect shadow_rect = GRect(center.x - radius, center.y - radius + 1, 2 * radius, 2 * radius);
+      graphics_context_set_stroke_color(fctxp->gctx, settings.ComplicationShadowColor);
+      graphics_draw_arc(fctxp->gctx, shadow_rect, GOvalScaleModeFitCircle, TRIG_QUARTER_ANGLE, TRIG_HALF_ANGLE + TRIG_QUARTER_ANGLE);
+    }
   }
 }
 
@@ -1119,14 +1187,19 @@ static void render_btqt_fctx(FContext *fctxp, FPoint icons_bottom) {
   fctx_end_fill(fctxp);
 }
 
+static GPoint get_complication_pos(int angle_native) {
+  int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
+  int wedgeadj = settings.ShowTickRevealWedge ? config.ComplicationWedgeDistanceAdj : 0;
+  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj - orbitadj + wedgeadj);
+  return relative_gpoint_to_absolute(&rel_pos);
+}
+
 static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
   fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
-  int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
-  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj - orbitadj);
-  GPoint abs_pos = relative_gpoint_to_absolute(&rel_pos);
+  GPoint abs_pos = get_complication_pos(angle_native);
   FPoint hour_pos = gpoint_to_fpoint(&abs_pos);
 
-  draw_complication_border(fctxp, abs_pos);
+  draw_complication_border_bg(fctxp, abs_pos);
 
   char mindraw[3];
   snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
@@ -1163,12 +1236,10 @@ static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
 static void render_ampm_fctx(FContext *fctxp, int angle_native) {
   fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
 
-  int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
-  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj - orbitadj);
-  GPoint abs_pos = relative_gpoint_to_absolute(&rel_pos);
+  GPoint abs_pos = get_complication_pos(angle_native);
   FPoint ampm_pos = gpoint_to_fpoint(&abs_pos);
 
-  draw_complication_border(fctxp, abs_pos);
+  draw_complication_border_bg(fctxp, abs_pos);
 
   char local_ampm_string[5];
   strftime(local_ampm_string, sizeof(local_ampm_string), "%p", prv_tick_time);
@@ -1252,12 +1323,10 @@ static void render_battery_pct_fctx(FContext *fctxp, FPoint render_pos) {
 static void render_logo_battery_fctx(FContext *fctxp, int angle_native) {
   FPoint render_pos;
   if (settings.EnableBattery || settings.EnableLogo || settings.EnableBatteryLine) {
-    int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
-    GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj - orbitadj);
-    GPoint abs_pos = relative_gpoint_to_absolute(&rel_pos);
+    GPoint abs_pos = get_complication_pos(angle_native);
     render_pos = gpoint_to_fpoint(&abs_pos);
 
-    draw_complication_border(fctxp, abs_pos);
+    draw_complication_border_bg(fctxp, abs_pos);
   }
 
   if (settings.EnableBattery)
@@ -1269,13 +1338,11 @@ static void render_logo_battery_fctx(FContext *fctxp, int angle_native) {
 static void render_date_fctx(FContext *fctxp, int angle_native) {
   fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
 
-  int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
-  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj - orbitadj);
-  GPoint abs_pos = relative_gpoint_to_absolute(&rel_pos);
+  GPoint abs_pos = get_complication_pos(angle_native);
   FPoint weekday_pos = gpoint_to_fpoint(&abs_pos);
   FPoint date_pos = weekday_pos;
 
-  draw_complication_border(fctxp, abs_pos);
+  draw_complication_border_bg(fctxp, abs_pos);
 
   int font_size_date = config.font_size_date + settings.ComplicationFontSizeAdj;
 
@@ -1353,7 +1420,8 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
 static void render_battery_line(GContext *ctx, int angle_native, int s_battery_level) {
   int width_rect = (s_battery_level * config.battery_line) / 100;
   int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
-  GPoint line_center = polar_to_point_native(angle_native, bounds.size.w/4 + config.ComplicationDistanceAdj - orbitadj);
+  int wedgeadj = settings.ShowTickRevealWedge ? config.ComplicationWedgeDistanceAdj : 0;
+  GPoint line_center = polar_to_point_native(angle_native, bounds.size.w/4 + config.ComplicationDistanceAdj - orbitadj + wedgeadj);
   line_center.x += bounds.size.w / 2;
   line_center.y += bounds.size.h / 2;
 
@@ -1444,35 +1512,87 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
 
   GRect bounds = layer_get_bounds(layer);
 
-  GRect Background =
-       GRect(0, 0, bounds.size.w, bounds.size.h);
+  GRect Background = GRect(0, 0, bounds.size.w, bounds.size.h);
+  int wedge_start_angle = hand_angle_native - TRIG_3_32_ANGLE;
+  int wedge_end_angle = hand_angle_native + TRIG_3_32_ANGLE;
+  int wedge_thickness = bounds.size.h * 5 / 32;
+  bool wedge_angles_inverted = false;
 
-   graphics_context_set_fill_color(ctx,PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1) );
-   graphics_fill_rect(ctx, Background,0,GCornersAll);
+  graphics_context_set_fill_color(ctx, settings.BackgroundColor1);
+  graphics_fill_rect(ctx, Background,0,GCornersAll);
 
-  if(settings.showMinorTick){
-        for (int i = 0; i < 60; i++) {
-        //if (i % 5 == 0) continue;
-        int angle = i * 6;
-        draw_minor_tick(ctx, angle, PBL_IF_BW_ELSE(settings.BWMajorTickColor, settings.MinorTickColor));
-      }
+  if (settings.ShowTickRevealWedge && (settings.showMinorTick || settings.showMajorTick)) {
+    // Draw the actual wedge and outline
+    graphics_context_set_fill_color(ctx, settings.TickRevealWedgeColor);
+    graphics_fill_radial(ctx, Background, GOvalScaleModeFillCircle, wedge_thickness, wedge_start_angle + TRIG_QUARTER_ANGLE, wedge_end_angle + TRIG_QUARTER_ANGLE);
+
+    graphics_context_set_antialiased(ctx, true);
+    graphics_context_set_stroke_width(ctx, 2);
+    graphics_context_set_stroke_color(ctx, settings.ComplicationShadowColor);
+    draw_radial_line(ctx, wedge_start_angle, wedge_thickness - 1, settings.ComplicationShadowColor);
+    draw_radial_line(ctx, wedge_end_angle, wedge_thickness - 1, settings.ComplicationShadowColor);
+
+    GRect wedge_border_arc = GRect(Background.origin.x + wedge_thickness, Background.origin.y + wedge_thickness, Background.size.w - 2 * wedge_thickness, Background.size.h - 2 * wedge_thickness);
+    graphics_draw_arc(ctx, wedge_border_arc, GOvalScaleModeFillCircle, wedge_start_angle + TRIG_QUARTER_ANGLE, wedge_end_angle + TRIG_QUARTER_ANGLE);
+    #if PBL_RECT
+    graphics_draw_arc(ctx, Background, GOvalScaleModeFillCircle, wedge_start_angle + TRIG_QUARTER_ANGLE, wedge_end_angle + TRIG_QUARTER_ANGLE);
+    #endif
+
+    // Need to normalize angles for comparison below
+    wedge_start_angle = modulus(wedge_start_angle, TRIG_MAX_ANGLE);
+    wedge_end_angle = modulus(wedge_end_angle, TRIG_MAX_ANGLE);
+    wedge_angles_inverted = wedge_start_angle > wedge_end_angle;
+    if (wedge_angles_inverted) {
+      wedge_start_angle ^= wedge_end_angle;
+      wedge_end_angle ^= wedge_start_angle;
+      wedge_start_angle ^= wedge_end_angle;
+    }
+  }
+
+  if (settings.showMinorTick) {
+    int min_start = 0, min_end = 59;
+
+    if (settings.ShowTickRevealWedge) {
+      const int sweep_min = 7;  // at most 7 minutes on each side will be visible in the wedge.
+      min_start = prv_tm.tm_min - sweep_min;
+      min_end = prv_tm.tm_min + sweep_min;
     }
 
-  if(settings.showMajorTick){
-      for (int i = 0; i < 12; i++) {
-        if (i == 6 || i == 12 || i == 3 || i == 9 || i == 0) {
-        int angle = i * 30 - 90;
-        draw_major_tick(ctx, angle, 16, PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.MajorTickColor), PBL_IF_BW_ELSE(settings.BWMajorTickColor, settings.MajorTickColor));
+    for (int i = min_start; i <= min_end; i++) {
+      // Angles are cyclical so it doesn't matter if i is in the range 0..59
+      int angle_native = i * TRIG_MAX_ANGLE / 60 - TRIG_QUARTER_ANGLE;
+
+      if (settings.ShowTickRevealWedge) {
+        // Wedge size ensures we'll never be over TRIG_MAX_ANGLE
+        int angle_comp = angle_native < 0 ? angle_native + TRIG_MAX_ANGLE : angle_native;
+
+        if (wedge_angles_inverted ^ (angle_comp < wedge_start_angle || angle_comp > wedge_end_angle)) {
+          continue; // Skip drawing minor ticks in the reveal wedge
+        }
       }
 
-      else {
-        //if (i == 6 || i == 12) continue;
-        int angle = i * 30 - 90;
-        draw_major_tick(ctx, angle, 16, PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1), PBL_IF_BW_ELSE(settings.BWMajorTickColor, settings.MinorTickColor));
-      }
+      draw_minor_tick(ctx, angle_native, settings.MinorTickColor);
     }
-    }
+  }
 
+  if (settings.showMajorTick) {
+    for (int i = 0; i < 12; i++) {
+      int angle_native = i * TRIG_MAX_ANGLE / 12 - TRIG_QUARTER_ANGLE;
+      int tick_length = 16; // Length of the major tick
+      GColor tick_color = (i == 6 || i == 12 || i == 3 || i == 9 || i == 0) ? settings.MajorTickColor : settings.MinorTickColor;
+
+      if (settings.ShowTickRevealWedge) {
+        int angle_comp = angle_native < 0 ? angle_native + TRIG_MAX_ANGLE : angle_native;
+
+        if (wedge_angles_inverted ^ (angle_comp < wedge_start_angle || angle_comp > wedge_end_angle)) {
+          tick_length = 4;  // major tick is smaller outside of the wedge
+          tick_color = settings.MinimizedMajorTickColor;
+        }
+      }
+
+      draw_major_tick(ctx, angle_native, tick_length, tick_color, tick_color);
+    }
+  }
 }
 
 
@@ -1489,6 +1609,11 @@ static void prv_window_load(Window *window) {
   minutes = prv_tick_time->tm_min;
   hours = prv_tick_time->tm_hour % 12;
   s_hours = prv_tick_time->tm_hour;
+
+  #ifdef SHOW_MINUTE
+  prv_tm.tm_min = minutes = SHOW_MINUTE;
+  #endif
+
   hand_angle_native = calculate_hand_angle(prv_tick_time);
 
   Layer *window_layer = window_get_root_layer(window);

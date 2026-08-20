@@ -134,3 +134,9 @@ GPoint point_from_edge(GPoint origin, int angle_deg, GRect r, int inset) {
     return GPoint(edge.x - (int)((cos_lookup(angle) * inset) / TRIG_MAX_RATIO), 
                   edge.y - (int)((sin_lookup(angle) * inset) / TRIG_MAX_RATIO));
 }
+
+int modulus(int a, int b) {
+  // % gives a remainder, but sometimes, we want a real positive modulus
+  int r = a % b;
+  return (r < 0) ? (r + b) : r;
+}
