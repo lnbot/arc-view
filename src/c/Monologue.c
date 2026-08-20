@@ -223,7 +223,8 @@ static void prv_default_settings(void) {
   settings.MinuteHandUpdateIntervalSec = 10;
   settings.OrbitComplications = true;
   settings.EnableAlarmCalendarSync = false;
-  settings.AlarmPinColor = GColorDarkCandyAppleRed;
+  settings.LocalAlarmPinColor = GColorImperialPurple;
+  settings.SyncedAlarmPinColor = GColorDarkCandyAppleRed;
   settings.CalendarPinColor = GColorVividCerulean;
   settings.TimelineAlarmPin = false;
   settings.TimelineTimerPin = false;
@@ -304,7 +305,8 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *minute_hand_updates_per_min_t = dict_find(iter, MESSAGE_KEY_MinuteHandUpdatesPerMin);
   Tuple *orbit_complications_t = dict_find(iter, MESSAGE_KEY_OrbitComplications);
   Tuple *enable_alarm_calendar_sync_t = dict_find(iter, MESSAGE_KEY_EnableAlarmCalendarSync);
-  Tuple *alarm_pin_color_t = dict_find(iter, MESSAGE_KEY_AlarmPinColor);
+  Tuple *local_alarm_pin_color_t = dict_find(iter, MESSAGE_KEY_LocalAlarmPinColor);
+  Tuple *synced_alarm_pin_color_t = dict_find(iter, MESSAGE_KEY_SyncedAlarmPinColor);
   Tuple *calendar_pin_color_t = dict_find(iter, MESSAGE_KEY_CalendarPinColor);
   Tuple *timeline_alarm_pin_t = dict_find(iter, MESSAGE_KEY_TimelineAlarmPin);
   Tuple *timeline_timer_pin_t = dict_find(iter, MESSAGE_KEY_TimelineTimerPin);
@@ -495,8 +497,13 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     alarm_calendar_sync_set_timer_pin(settings.TimelineTimerPin);
   }
 
-  if (alarm_pin_color_t) {
-    settings.AlarmPinColor = GColorFromHEX(alarm_pin_color_t->value->int32);
+  if (local_alarm_pin_color_t) {
+    settings.LocalAlarmPinColor = GColorFromHEX(local_alarm_pin_color_t->value->int32);
+    settings_changed = true;
+  }
+
+  if (synced_alarm_pin_color_t) {
+    settings.SyncedAlarmPinColor = GColorFromHEX(synced_alarm_pin_color_t->value->int32);
     settings_changed = true;
   }
 
@@ -1005,12 +1012,22 @@ static void draw_event_pin(GContext *ctx, int minute, int second, GColor color) 
 }
 
 static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
-  // Only draw pins when the sync feature is enabled.
+  time_t now = time(NULL);
+
+  // Draw local alarm pin if it's going off within the next hour
+  time_t local_alarm;
+  if (alarm_service_peek_next(&local_alarm)) {
+    time_t diff = local_alarm - now;
+    if (diff <= 3599) {  // within the next 59 min 59 sec
+      struct tm *lalarm_tm = localtime(&local_alarm);
+      draw_event_pin(ctx, lalarm_tm->tm_min, 0, settings.LocalAlarmPinColor);
+    }
+  }
+
+  // Only draw pins for remotely synced items when the sync feature is enabled.
   if (!settings.EnableAlarmCalendarSync) {
     return;
   }
-
-  uint32_t now = (uint32_t)time(NULL);
 
   // Draw alarm pin (if set and within the next ~hour).
   uint32_t alarm_epoch = alarm_calendar_sync_get_alarm();
@@ -1019,7 +1036,7 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
     if (diff <= 3599) {  // within the next 59 min 59 sec
       time_t t = (time_t)alarm_epoch;
       struct tm *alarm_tm = localtime(&t);
-      draw_event_pin(ctx, alarm_tm->tm_min, 0, settings.AlarmPinColor);
+      draw_event_pin(ctx, alarm_tm->tm_min, 0, settings.SyncedAlarmPinColor);
     }
   }
 
@@ -1031,7 +1048,7 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
     if (diff <= 3599) {  // timer completes within the next 59 min 59 sec
       time_t t = (time_t)timer_epoch;
       struct tm *timer_tm = localtime(&t);
-      draw_event_pin(ctx, timer_tm->tm_min, timer_tm->tm_sec, settings.AlarmPinColor);
+      draw_event_pin(ctx, timer_tm->tm_min, timer_tm->tm_sec, settings.SyncedAlarmPinColor);
     }
   }
 

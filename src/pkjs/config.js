@@ -430,8 +430,16 @@ module.exports = [
       },
       {
         "type": "color",
-        "label": "Alarm and Timer Pin Colour",
-        "messageKey": "AlarmPinColor",
+        "label": "Watch Alarm Pin Colour",
+        "messageKey": "LocalAlarmPinColor",
+        "defaultValue": "550055",
+        "allowGray": false,
+        "sunlight": false
+      },
+      {
+        "type": "color",
+        "label": "Phone Alarm and Timer Pin Colour",
+        "messageKey": "SyncedAlarmPinColor",
         "defaultValue": "FF8800",
         "allowGray": false,
         "sunlight": false

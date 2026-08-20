@@ -59,7 +59,7 @@ typedef struct ClaySettings {
   int MinuteHandUpdateIntervalSec;
   bool OrbitComplications;
   bool EnableAlarmCalendarSync;
-  GColor AlarmPinColor;
+  GColor SyncedAlarmPinColor;
   GColor CalendarPinColor;
 //  bool EnablePebbleLogo;
 //  bool EnableWatchModel;
@@ -105,4 +105,5 @@ typedef struct ClaySettings {
   GColor TickRevealWedgeColor;
   GColor MinimizedMajorTickColor;
   GColor ComplicationBackgroundColor;
+  GColor LocalAlarmPinColor;
 } __attribute__((__packed__)) ClaySettings;
