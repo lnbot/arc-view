@@ -140,3 +140,14 @@ int modulus(int a, int b) {
   int r = a % b;
   return (r < 0) ? (r + b) : r;
 }
+
+// Fixed point values (Q15.16)
+#define LUMINANCE_R_FACTOR (2126 * 0x10000 / 10000)
+#define LUMINANCE_G_FACTOR (7152 * 0x10000 / 10000)
+#define LUMINANCE_B_FACTOR (722 * 0x10000 / 10000)
+GColor get_contrasting_color(GColor color) {
+  // Luminance = 0.2126 * R + 0.7152 * G + 0.0722 * B
+  // Calculate it as Q15.16 fixed point
+  int lum16 = LUMINANCE_R_FACTOR * color.r + LUMINANCE_G_FACTOR * color.g + LUMINANCE_B_FACTOR * color.b;
+  return lum16 >= 0x8000 ? GColorBlack : GColorWhite;
+}

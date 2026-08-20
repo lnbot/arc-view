@@ -880,7 +880,7 @@ static void draw_hand_center(GContext *ctx, GColor outer_color, GColor inner_col
 }
 
 static void draw_event_pin(GContext *ctx, int minute, int second, GColor color) {
-  static const int pin_length = 12; // Halfway between major and minor tick lengths
+  static const int pin_length = 13; // Halfway between major and minor tick lengths with room for an outline
   static const int pin_half_angle = DEG_TO_TRIGANGLE(35); // Half of the angle for the pin's width
 
   int angle_native = (TRIG_MAX_ANGLE * minute / 60) + (TRIG_MAX_ANGLE * second / 3600) - TRIG_QUARTER_ANGLE;
@@ -905,6 +905,17 @@ static void draw_event_pin(GContext *ctx, int minute, int second, GColor color) 
   graphics_context_set_fill_color(ctx, color);
   graphics_fill_radial(ctx, pin_rect, GOvalScaleModeFitCircle, pin_length,
      pin_center_angle - pin_half_angle, pin_center_angle + pin_half_angle);
+
+  // Draw contrasting highlights around the pin
+  int adj_pin_angle = pin_center_angle - TRIG_QUARTER_ANGLE;
+  graphics_context_set_stroke_color(ctx, get_contrasting_color(color));
+  graphics_context_set_stroke_width(ctx, 1);
+  GPoint highlightpt = polar_to_point_offset_native(edge, adj_pin_angle - pin_half_angle, pin_length);
+  graphics_draw_line(ctx, edge, highlightpt);
+  highlightpt = polar_to_point_offset_native(edge, adj_pin_angle + pin_half_angle, pin_length);
+  graphics_draw_line(ctx, edge, highlightpt);
+  graphics_context_set_stroke_width(ctx, 2);
+  graphics_draw_arc(ctx, pin_rect, GOvalScaleModeFitCircle, pin_center_angle - pin_half_angle, pin_center_angle + pin_half_angle);
 }
 
 static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
@@ -1440,7 +1451,7 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
   if (settings.ShowTickRevealWedge && (settings.showMinorTick || settings.showMajorTick)) {
     wedge_start_angle = hand_angle_native - (WEDGE_SWEEP_ANGLE / 2) + TRIG_QUARTER_ANGLE;
     wedge_end_angle = hand_angle_native + (WEDGE_SWEEP_ANGLE / 2) + TRIG_QUARTER_ANGLE;
-    wedge_thickness = bounds.size.h * 5 / 32;
+    wedge_thickness = bounds.size.h * 5 / 32 + 1;
 
     // Draw the actual wedge and outline
     graphics_context_set_fill_color(ctx, settings.TickRevealWedgeColor);

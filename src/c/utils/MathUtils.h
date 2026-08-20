@@ -22,3 +22,4 @@ GPoint angle_to_rounded_rect_edge_native(GPoint center, int angle_native, int ha
 GPoint point_from_edge(GPoint origin, int angle_deg, GRect r, int inset);
 
 int modulus(int a, int b);
+GColor get_contrasting_color(GColor color);
