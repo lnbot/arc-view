@@ -186,25 +186,14 @@ static void prv_default_settings(void) {
   settings.MinimizedMajorTickColor = GColorCobaltBlue;
   settings.SecondsHandColor = GColorOrange;
   settings.BatteryLineColor = GColorOrange;
-  settings.BWDateColor = GColorBlack;
-  settings.BWBackgroundColor1 = GColorWhite;
-  settings.BWMinuteHandShadowColor = GColorDarkGray;
-  settings.BWMinHandBatLineColor = GColorBlack;
-  settings.BWHourDigitsColor = GColorBlack;
-  settings.BWMajorTickColor = GColorBlack;
   settings.BTQTColor = GColorDarkGray;
-  settings.BWBTQTColor = GColorBlack;
   settings.showMajorTick = true;
   settings.showMinorTick = true;
-  // settings.BWThemeSelect = "wh";
-  // settings.ThemeSelect = "wh";
-  snprintf(settings.BWThemeSelect, sizeof(settings.BWThemeSelect), "%s", "wh");
   snprintf(settings.ThemeSelect, sizeof(settings.ThemeSelect), "%s", "wh");
   snprintf(settings.PosLeft, sizeof(settings.PosLeft), "%s", "hr");
   snprintf(settings.PosRight, sizeof(settings.PosRight), "%s", "lo");
   snprintf(settings.PosTop, sizeof(settings.PosTop), "%s", "ap");
   snprintf(settings.PosBottom, sizeof(settings.PosBottom), "%s", "dt");
-  settings.BWShadowOn = true;
   settings.ShadowOn = true;
   settings.Font = 1;
   settings.VibeOn = false;
@@ -258,7 +247,6 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *enable_battery_line_t = dict_find(iter, MESSAGE_KEY_EnableBatteryLine);
   Tuple *enable_logo_t = dict_find(iter, MESSAGE_KEY_EnableLogo);
   Tuple *logotext_t = dict_find(iter, MESSAGE_KEY_LogoText);
-  Tuple *bwthemeselect_t = dict_find(iter, MESSAGE_KEY_BWThemeSelect);
   Tuple *themeselect_t = dict_find(iter, MESSAGE_KEY_ThemeSelect);
   Tuple *bg_color1_t = dict_find(iter, MESSAGE_KEY_BackgroundColor1);
   Tuple *comp_border_color_t = dict_find(iter, MESSAGE_KEY_ComplicationBorderColor);
@@ -269,7 +257,6 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *text_color2_t = dict_find(iter, MESSAGE_KEY_MinorTickColor);
   //Tuple *text_color3_t = dict_find(iter, MESSAGE_KEY_TextColor3);
   Tuple *date_color_t = dict_find(iter, MESSAGE_KEY_DateColor);
-  Tuple *bwdate_color_t = dict_find(iter, MESSAGE_KEY_BWDateColor);
   Tuple *hours_color_t = dict_find(iter, MESSAGE_KEY_HourDigitsColor);
   //Tuple *hours_border_t = dict_find(iter, MESSAGE_KEY_HoursHandBorderColor);
   Tuple *minutes_color_t = dict_find(iter, MESSAGE_KEY_MinutesHandColor);
@@ -277,14 +264,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *tick_color_t = dict_find(iter, MESSAGE_KEY_MajorTickColor);
   //Tuple *seconds_color_t = dict_find(iter, MESSAGE_KEY_SecondsHandColor);
   Tuple *battery_line_color_t = dict_find(iter, MESSAGE_KEY_BatteryLineColor);
-  Tuple *bwbg_color1_t = dict_find(iter, MESSAGE_KEY_BWBackgroundColor1);
-  Tuple *bwbg_color2_t = dict_find(iter, MESSAGE_KEY_BWMinuteHandShadowColor);
-  Tuple *bwtext_color1_t = dict_find(iter, MESSAGE_KEY_BWMinHandBatLineColor);
-  Tuple *bwtext_color2_t = dict_find(iter, MESSAGE_KEY_BWHourDigitsColor);
-  Tuple *bwtext_color3_t = dict_find(iter, MESSAGE_KEY_BWMajorTickColor);
   Tuple *btqt_color_t = dict_find(iter, MESSAGE_KEY_BTQTColor);
-  Tuple *bwbtqt_color_t = dict_find(iter, MESSAGE_KEY_BWBTQTColor);
-  Tuple *bwshadowon_t = dict_find(iter, MESSAGE_KEY_BWShadowOn);
   Tuple *shadowon_t = dict_find(iter, MESSAGE_KEY_ShadowOn);
   Tuple *addzero12_t = dict_find(iter, MESSAGE_KEY_AddZero12h);
   Tuple *remzero24_t = dict_find(iter, MESSAGE_KEY_RemoveZero24h);
@@ -525,90 +505,6 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     settings_changed = true;
   }
 
-  if (bwthemeselect_t) {
-          // Compare the string value received from the phone
-          if (strcmp(bwthemeselect_t->value->cstring, "wh") == 0) {
-              // Set the theme and other settings for "wh"
-                    settings.BWDateColor = GColorBlack;
-                    if (bwshadowon_t) {
-                      settings.BWShadowOn = bwshadowon_t->value->int32 == 1;
-                    }
-                        if(settings.BWShadowOn){
-                          settings.BWMinuteHandShadowColor = GColorDarkGray;
-                        }
-                        else {
-                        settings.BWMinuteHandShadowColor = GColorWhite;
-                        }
-                    settings.BWBackgroundColor1 = GColorWhite;
-                    settings.BWMinHandBatLineColor = GColorBlack;
-                    settings.BWHourDigitsColor = GColorBlack;
-                    settings.BWMajorTickColor = GColorBlack;
-                    settings.BWBTQTColor = GColorBlack;
-                      theme_settings_changed = true;
-                    //    APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme white selected");
-          } else if (strcmp(bwthemeselect_t->value->cstring, "bl") == 0) {
-              // Set the theme and other settings for "bl"
-                    settings.BWDateColor = GColorWhite;
-                    settings.BWBackgroundColor1 = GColorBlack;
-                    if (bwshadowon_t) {
-                      settings.BWShadowOn = bwshadowon_t->value->int32 == 1;
-                    }
-                        if(settings.BWShadowOn){
-                          settings.BWMinuteHandShadowColor = GColorDarkGray;
-                        }
-                        else {
-                        settings.BWMinuteHandShadowColor = GColorBlack;
-                        }
-                    settings.BWMinHandBatLineColor = GColorWhite;
-                    settings.BWHourDigitsColor = GColorWhite;
-                    settings.BWMajorTickColor = GColorWhite;
-                    settings.BWBTQTColor = GColorWhite;
-                      theme_settings_changed = true;
-                    //    APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme black selected");
-          } else if (strcmp(bwthemeselect_t->value->cstring, "cu") == 0) {
-              // Set the theme for "cu" and handle custom colors
-              settings.BWDateColor = GColorFromHEX(bwdate_color_t->value->int32);
-                    layer_mark_dirty(s_canvas_layer);
-
-                  if (bwbg_color1_t) {
-                    settings.BWBackgroundColor1 = GColorFromHEX(bwbg_color1_t->value->int32);
-                    settings_changed = true;
-                  }
-
-                  if (bwshadowon_t) {
-                    settings.BWShadowOn = bwshadowon_t->value->int32 == 1;
-
-                      if(settings.BWShadowOn){
-                        if (bwbg_color2_t) {
-                          settings.BWMinuteHandShadowColor = GColorFromHEX(bwbg_color2_t->value->int32);
-                          settings_changed = true;
-                        }
-                      }
-                      else {
-                      settings.BWMinuteHandShadowColor = settings.BWBackgroundColor1;
-                      }
-                  }
-
-                  if (bwtext_color1_t) {
-                    settings.BWMinHandBatLineColor = GColorFromHEX(bwtext_color1_t->value->int32);
-                    settings_changed = true;
-                  }
-                  if (bwtext_color2_t) {
-                    settings.BWHourDigitsColor = GColorFromHEX(bwtext_color2_t->value->int32);
-                    settings_changed = true;
-                  }
-                  if (bwtext_color3_t) {
-                    settings.BWMajorTickColor = GColorFromHEX(bwtext_color3_t->value->int32);
-                    settings_changed = true;
-                  }
-                  if (bwbtqt_color_t) {
-                    settings.BWBTQTColor = GColorFromHEX(bwbtqt_color_t->value->int32);
-                    layer_mark_dirty(s_date_battery_logo_layer);
-                  }
-                  theme_settings_changed = true;
-                  //  APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme custom selected");
-                }
-          }
 /////////////////////////////////////
   if (themeselect_t) {
           // Compare the string value received from the phone
@@ -940,7 +836,7 @@ static void draw_line_hand(GContext *ctx, int angle, int length, int back_length
     }
   #endif
   // Define shadow color
-  GColor shadow_color = PBL_IF_BW_ELSE(settings.BWMinuteHandShadowColor,settings.MinuteHandShadowColor);
+  GColor shadow_color = settings.MinuteHandShadowColor;
 
 
   // Set the antialiasing
@@ -1198,7 +1094,7 @@ static void render_btqt_fctx(FContext *fctxp, FPoint icons_bottom) {
   *status = '\0';
 
   int font_size = config.font_size_btqt;
-  fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWBTQTColor, settings.BTQTColor));
+  fctx_set_fill_color(fctxp, settings.BTQTColor);
   fctx_begin_fill(fctxp);
   fctx_set_text_em_height(fctxp, FontBTQTIconsFctx, font_size);
   fctx_set_offset(fctxp, icons_bottom);
@@ -1214,7 +1110,7 @@ static GPoint get_complication_pos(int angle_native) {
 }
 
 static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
-  fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
+  fctx_set_fill_color(fctxp, settings.HourDigitsColor);
   GPoint abs_pos = get_complication_pos(angle_native);
   FPoint hour_pos = gpoint_to_fpoint(&abs_pos);
 
@@ -1253,7 +1149,7 @@ static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
 }
 
 static void render_ampm_fctx(FContext *fctxp, int angle_native) {
-  fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWHourDigitsColor, settings.HourDigitsColor));
+  fctx_set_fill_color(fctxp, settings.HourDigitsColor);
 
   GPoint abs_pos = get_complication_pos(angle_native);
   FPoint ampm_pos = gpoint_to_fpoint(&abs_pos);
@@ -1279,7 +1175,7 @@ static void render_logo_fctx(FContext *fctxp, FPoint render_pos) {
 
   const int logo_top_margin = 2;
   const int logo_line_spacing = 2;
-  fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
+  fctx_set_fill_color(fctxp, settings.DateColor);
 
   render_pos.y += INT_TO_FIXED(logo_line_spacing + logo_top_margin);
   int font_size_logo = config.font_size_logo + settings.ComplicationFontSizeAdj;
@@ -1319,7 +1215,7 @@ static void render_battery_pct_fctx(FContext *fctxp, FPoint render_pos) {
   const int battery_line_offset = 2;
   const int battery_pct_offset = 2;
 
-  fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
+  fctx_set_fill_color(fctxp, settings.DateColor);
 
   int font_size_battery = config.font_size_battery + settings.ComplicationFontSizeAdj;
   
@@ -1355,7 +1251,7 @@ static void render_logo_battery_fctx(FContext *fctxp, int angle_native) {
 }
 
 static void render_date_fctx(FContext *fctxp, int angle_native) {
-  fctx_set_fill_color(fctxp, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
+  fctx_set_fill_color(fctxp, settings.DateColor);
 
   GPoint abs_pos = get_complication_pos(angle_native);
   FPoint weekday_pos = gpoint_to_fpoint(&abs_pos);
@@ -1446,7 +1342,7 @@ static void render_battery_line(GContext *ctx, int angle_native, int s_battery_l
 
   GRect BatteryLineRect = GRect(line_center.x - width_rect/2, line_center.y, width_rect, 2);
   graphics_context_set_antialiased(ctx, true);
-  graphics_context_set_fill_color(ctx, PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.BatteryLineColor));
+  graphics_context_set_fill_color(ctx, settings.BatteryLineColor);
   graphics_fill_rect(ctx,BatteryLineRect, 1, GCornersBottom);  
 }
 
@@ -1505,22 +1401,22 @@ static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx) {
       draw_line_hand(ctx, hand_angle_native,
           bounds.size.w/2 - config.analogue_hand_a,
           settings.BackLen,
-          PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor));
-      draw_hand_center(ctx, PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
+          settings.MinutesHandColor);
+      draw_hand_center(ctx, settings.MinutesHandColor, settings.BackgroundColor1);
   #else
       if(settings.ForegroundShape){
           draw_line_hand(ctx, hand_angle_native,
               bounds.size.w/2 - config.analogue_hand_a,
               settings.BackLen,
-              PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor));
-          draw_hand_center(ctx, PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
+              settings.MinutesHandColor);
+          draw_hand_center(ctx, settings.MinutesHandColor, settings.BackgroundColor1);
       }
       else{
           draw_line_hand(ctx, hand_angle_native,
               bounds.size.w/2 - config.analogue_hand_c,
               settings.BackLen,
-              PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor));
-          draw_hand_center(ctx, PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
+              settings.MinutesHandColor);
+          draw_hand_center(ctx, settings.MinutesHandColor, settings.BackgroundColor1);
       }
   #endif
 
