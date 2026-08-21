@@ -88,8 +88,8 @@
       "LocalAlarmPinColor",
       "SyncedAlarmPinColor",
       "CalendarPinColor",
-      "ShowTickRevealWedge",
-      "TickRevealWedgeColor",
+      "ShowWatchDialWindow",
+      "WatchDialWindowColor",
       "MinimizedMajorTickColor"
     ],
     "resources": {

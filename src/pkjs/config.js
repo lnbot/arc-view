@@ -19,9 +19,7 @@ module.exports = [
         "label": "Watchface Style",
         "messageKey": "ForegroundShape",
         "description": "Off = Rectangular, On = Round",
-        "capabilities": [
-          "RECT"
-        ],
+        "capabilities": [ "RECT" ],
         "defaultValue": true
       },
       {
@@ -51,9 +49,9 @@ module.exports = [
       },
       {
         "type": "toggle",
-        "label": "Orbiting Tick Reveal Wedge",
-        "messageKey": "ShowTickRevealWedge",
-        "description": "Wedge that follows the minute hand and reveals ticks underneath. Only enabled with round watchface and orbiting complications.",
+        "label": "Orbiting Watch Dial Window",
+        "messageKey": "ShowWatchDialWindow",
+        "description": "Window that follows the minute hand and reveals the dial ticks underneath. Only enabled with round watchface and orbiting complications.",
         "capabilities": [ "NOT_BW" ],
         "defaultValue": false
       },
@@ -369,9 +367,9 @@ module.exports = [
       },
       {
         "type": "color",
-        "label": "Tick Reveal Wedge Color",
-        "messageKey": "TickRevealWedgeColor",
-        "description": "Background color for the tick reveal wedge",
+        "label": "Watch Dial Window Color",
+        "messageKey": "WatchDialWindowColor",
+        "description": "Background color for the watch dial window",
         "defaultValue": "FFFFFF"
       },
       {

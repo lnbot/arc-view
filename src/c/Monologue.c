@@ -77,8 +77,8 @@ typedef struct {
   int ComplicationBorderAdj;
   int ComplicationDistanceAdj;
   int ComplicationOrbitSizeAdj;
-  int ComplicationWedgeSizeAdj;
-  int ComplicationWedgeDistanceAdj;
+  int ComplicationDialWindowSizeAdj;
+  int ComplicationDialWindowDistanceAdj;
 } UIConfig;
 
 #ifdef PBL_PLATFORM_EMERY
@@ -106,8 +106,8 @@ static const UIConfig config = {
 .ComplicationBorderAdj = 4,
 .ComplicationDistanceAdj = 6,
 .ComplicationOrbitSizeAdj = 2,
-.ComplicationWedgeSizeAdj = 2,
-.ComplicationWedgeDistanceAdj = 2,
+.ComplicationDialWindowSizeAdj = 2,
+.ComplicationDialWindowDistanceAdj = 2,
 };
 #else //defined(PBL_PLATFORM_GABBRO)
 static const UIConfig config = {
@@ -126,10 +126,115 @@ static const UIConfig config = {
 .ComplicationBorderAdj = 2,
 .ComplicationDistanceAdj = 2,
 .ComplicationOrbitSizeAdj = 3,
-.ComplicationWedgeSizeAdj = 1,
-.ComplicationWedgeDistanceAdj = 4,
+.ComplicationDialWindowSizeAdj = 1,
+.ComplicationDialWindowDistanceAdj = 4,
 };
 #endif
+
+// Built-in themes. Match with values in config.js
+static ThemePreset prv_themes[] = {
+  {
+    .name = "wh",
+    .BackgroundColor1 = GColorWhite,
+    .ComplicationBorderColor = GColorLightGray,
+    .ComplicationBackgroundColor = GColorWhite,
+    .ComplicationShadowColor = GColorDarkGray,
+    .DateColor = GColorDarkGray,
+    .HourDigitsColor = GColorCobaltBlue,
+    .MinutesHandColor = GColorCobaltBlue,
+    .MinuteHandShadowColor = GColorBabyBlueEyes,
+    .MajorTickColor = GColorCobaltBlue,
+    .MinimizedMajorTickColor = GColorCobaltBlue,
+    .MinorTickColor = GColorCobaltBlue,
+    .BatteryLineColor = GColorOrange,
+    .BTQTColor = GColorDarkGray,
+    .LocalAlarmPinColor = GColorScreaminGreen,
+    .SyncedAlarmPinColor = GColorRichBrilliantLavender,
+    .CalendarPinColor = GColorCadetBlue,
+    .WatchDialWindowColor = GColorVeryLightBlue,
+  },
+  {
+    .name = "bl",
+    .BackgroundColor1 = GColorBlack,
+    .ComplicationBorderColor = GColorDarkGray,
+    .ComplicationBackgroundColor = GColorBlack,
+    .ComplicationShadowColor = GColorLightGray,
+    .DateColor = GColorWindsorTan,
+    .HourDigitsColor = GColorYellow,
+    .MinutesHandColor = GColorYellow,
+    .MinuteHandShadowColor = GColorBlack,
+    .MajorTickColor = GColorYellow,
+    .MinimizedMajorTickColor = GColorYellow,
+    .MinorTickColor = GColorDarkGray,
+    .BatteryLineColor = GColorYellow,
+    .BTQTColor = GColorLightGray,
+    .LocalAlarmPinColor = GColorScreaminGreen,
+    .SyncedAlarmPinColor = GColorRichBrilliantLavender,
+    .CalendarPinColor = GColorCadetBlue,
+    .WatchDialWindowColor = GColorDarkGray,
+  },
+  {
+    .name = "bu",
+    .BackgroundColor1 = GColorDukeBlue,
+    .ComplicationBorderColor = GColorDukeBlue,
+    .ComplicationBackgroundColor = GColorDukeBlue,
+    .ComplicationShadowColor = GColorDukeBlue,
+    .DateColor = GColorWhite,
+    .HourDigitsColor = GColorYellow,
+    .MinutesHandColor = GColorYellow,
+    .MinuteHandShadowColor = GColorOxfordBlue,
+    .MajorTickColor = GColorYellow,
+    .MinimizedMajorTickColor = GColorYellow,
+    .MinorTickColor = GColorPictonBlue,
+    .BatteryLineColor = GColorRed,
+    .BTQTColor = GColorPictonBlue,
+    .LocalAlarmPinColor = GColorScreaminGreen,
+    .SyncedAlarmPinColor = GColorRichBrilliantLavender,
+    .CalendarPinColor = GColorCadetBlue,
+    .WatchDialWindowColor = GColorVeryLightBlue,
+  },
+  {
+    .name = "pl",
+    .BackgroundColor1 = GColorPurple,
+    .ComplicationBorderColor = GColorPurple,
+    .ComplicationBackgroundColor = GColorPurple,
+    .ComplicationShadowColor = GColorPurple,
+    .DateColor = GColorRichBrilliantLavender,
+    .HourDigitsColor = GColorRichBrilliantLavender,
+    .MinutesHandColor = GColorRichBrilliantLavender,
+    .MinuteHandShadowColor = GColorImperialPurple,
+    .MajorTickColor = GColorRichBrilliantLavender,
+    .MinorTickColor = GColorImperialPurple,
+    .MinimizedMajorTickColor = GColorImperialPurple,
+    .BatteryLineColor = GColorBulgarianRose,
+    .BTQTColor = GColorImperialPurple,
+    .LocalAlarmPinColor = GColorScreaminGreen,
+    .SyncedAlarmPinColor = GColorRichBrilliantLavender,
+    .CalendarPinColor = GColorCadetBlue,
+    .WatchDialWindowColor = GColorPastelYellow,
+  },
+  {
+    .name = "gr",
+    .BackgroundColor1 = GColorBlack,
+    .ComplicationBorderColor = GColorArmyGreen,
+    .ComplicationBackgroundColor = GColorBlack,
+    .ComplicationShadowColor = GColorMidnightGreen,
+    .DateColor = GColorGreen,
+    .HourDigitsColor = GColorBrightGreen,
+    .MinutesHandColor = GColorBrightGreen,
+    .MinuteHandShadowColor = GColorDarkGreen,
+    .MajorTickColor = GColorBrightGreen,
+    .MinorTickColor = GColorDarkGreen,
+    .MinimizedMajorTickColor = GColorBrightGreen,
+    .BatteryLineColor = GColorPastelYellow,
+    .BTQTColor = GColorDarkGreen,
+    .LocalAlarmPinColor = GColorScreaminGreen,
+    .SyncedAlarmPinColor = GColorRichBrilliantLavender,
+    .CalendarPinColor = GColorCadetBlue,
+    .WatchDialWindowColor = GColorMayGreen,
+  },
+  { .name = "" }
+};
 
 bool connected = true;
 
@@ -217,8 +322,8 @@ static void prv_default_settings(void) {
   settings.CalendarPinColor = GColorVividCerulean;
   settings.TimelineAlarmPin = false;
   settings.TimelineTimerPin = false;
-  settings.ShowTickRevealWedge = false;
-  settings.TickRevealWedgeColor = GColorWhite;
+  settings.ShowWatchDialWindow = false;
+  settings.WatchDialWindowColor = GColorWhite;
 }
 
 static void bluetooth_vibe_icon (bool connected) {
@@ -290,8 +395,8 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *calendar_pin_color_t = dict_find(iter, MESSAGE_KEY_CalendarPinColor);
   Tuple *timeline_alarm_pin_t = dict_find(iter, MESSAGE_KEY_TimelineAlarmPin);
   Tuple *timeline_timer_pin_t = dict_find(iter, MESSAGE_KEY_TimelineTimerPin);
-  Tuple *show_tick_reveal_wedge_t = dict_find(iter, MESSAGE_KEY_ShowTickRevealWedge);
-  Tuple *tick_reveal_wedge_color_t = dict_find(iter, MESSAGE_KEY_TickRevealWedgeColor);
+  Tuple *show_watch_dial_window_t = dict_find(iter, MESSAGE_KEY_ShowWatchDialWindow);
+  Tuple *watch_dial_window_color_t = dict_find(iter, MESSAGE_KEY_WatchDialWindowColor);
   Tuple *minimized_major_tick_color_t = dict_find(iter, MESSAGE_KEY_MinimizedMajorTickColor);
 
   if (fg_shape_t) {
@@ -492,255 +597,157 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     settings_changed = true;
   }
 
-  if (show_tick_reveal_wedge_t) {
-    settings.ShowTickRevealWedge = (show_tick_reveal_wedge_t->value->int32 == 1) && settings.OrbitComplications;
+  if (show_watch_dial_window_t) {
+    settings.ShowWatchDialWindow = (show_watch_dial_window_t->value->int32 == 1) && settings.OrbitComplications;
     #ifdef PBL_RECT
-    settings.ShowTickRevealWedge = settings.ShowTickRevealWedge && settings.ForegroundShape;
+    settings.ShowWatchDialWindow = settings.ShowWatchDialWindow && settings.ForegroundShape;
     #endif
     settings_changed = true;
   }
 
-  if (tick_reveal_wedge_color_t) {
-    settings.TickRevealWedgeColor = GColorFromHEX(tick_reveal_wedge_color_t->value->int32);
+  if (watch_dial_window_color_t) {
+    settings.WatchDialWindowColor = GColorFromHEX(watch_dial_window_color_t->value->int32);
     settings_changed = true;
   }
 
 /////////////////////////////////////
   if (themeselect_t) {
-          // Compare the string value received from the phone
-          if (strcmp(themeselect_t->value->cstring, "wh") == 0) {
-              // Set the theme and other settings for "wh"
-                    if (shadowon_t) {
-                      settings.ShadowOn = shadowon_t->value->int32 == 1;
-                    }
-                        if(settings.ShadowOn){
-                          settings.MinuteHandShadowColor = GColorBabyBlueEyes;
-                        }
-                        else {
-                        settings.MinuteHandShadowColor = GColorWhite;
-                        }
-                    settings.BackgroundColor1 = GColorWhite;
-                    settings.ComplicationBorderColor = GColorLightGray;
-                    settings.ComplicationBackgroundColor = GColorWhite;
-                    settings.ComplicationShadowColor = GColorLightGray;
-                    settings.MinorTickColor = GColorBabyBlueEyes;
-                    settings.DateColor = GColorDarkGray;
-                    settings.HourDigitsColor = GColorCobaltBlue;
-                    settings.MinutesHandColor = GColorCobaltBlue;
-                    settings.MajorTickColor = GColorCobaltBlue;
-                    settings.BatteryLineColor = GColorOrange;
-                    settings.BTQTColor = GColorDarkGray;
-                      theme_settings_changed = true;
-                    //    APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme white selected");
-          } else if (strcmp(themeselect_t->value->cstring, "bl") == 0) {
-              // Set the theme and other settings for "bl"
+    APP_LOG(APP_LOG_LEVEL_INFO, "Theme selected: '%s'", themeselect_t->value->cstring);
 
-                    settings.BackgroundColor1 = GColorBlack;
-                    settings.ComplicationBorderColor = GColorBlack;
-                    settings.ComplicationBackgroundColor = GColorBlack;
-                    settings.ComplicationShadowColor = GColorBlack;
-                    if (shadowon_t) {
-                      settings.ShadowOn = shadowon_t->value->int32 == 1;
-                    }
-                        if(settings.ShadowOn){
-                          settings.MinuteHandShadowColor = GColorDarkGray;
-                        }
-                        else {
-                        settings.MinuteHandShadowColor = GColorBlack;
-                        }
-                    settings.MinorTickColor = GColorDarkGray;
-                    settings.DateColor = GColorWindsorTan;
-                    settings.HourDigitsColor = GColorYellow;
-                    settings.MinutesHandColor = GColorYellow;
-                    settings.MajorTickColor = GColorYellow;
-                    settings.BatteryLineColor = GColorYellow;
-                    settings.BTQTColor = GColorLightGray;
-                      theme_settings_changed = true;
-                      //  APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme black selected");
-          } else if (strcmp(themeselect_t->value->cstring, "bu") == 0) {
-              // Set the theme and other settings for "bl"
+    if (strcmp(themeselect_t->value->cstring, "cu") == 0) {
+      // Set the theme for "cu" and handle custom colors
+      if (bg_color1_t) {
+        settings.BackgroundColor1 = GColorFromHEX(bg_color1_t->value->int32);
+        settings_changed = true;
+      }
 
-                    settings.BackgroundColor1 = GColorDukeBlue;
-                    settings.ComplicationBorderColor = GColorDukeBlue;
-                    settings.ComplicationBackgroundColor = GColorDukeBlue;
-                    settings.ComplicationShadowColor = GColorDukeBlue;
-                    if (shadowon_t) {
-                      settings.ShadowOn = shadowon_t->value->int32 == 1;
-                    }
-                        if(settings.ShadowOn){
-                          settings.MinuteHandShadowColor = GColorOxfordBlue;
-                        }
-                        else {
-                        settings.MinuteHandShadowColor = GColorDukeBlue;
-                        }
-                    settings.MinorTickColor = GColorPictonBlue;
-                    settings.DateColor = GColorWhite;
-                    settings.HourDigitsColor = GColorYellow;
-                    settings.MinutesHandColor = GColorYellow;
-                    settings.MajorTickColor = GColorYellow;
-                    settings.BatteryLineColor = GColorRed;
-                    settings.BTQTColor = GColorPictonBlue;
-                      theme_settings_changed = true;
-                      //  APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme blue selected");
-          } else if (strcmp(themeselect_t->value->cstring, "pl") == 0) {
-              // Set the theme and other settings for "bl"
+      if (comp_border_color_t) {
+        settings.ComplicationBorderColor = GColorFromHEX(comp_border_color_t->value->int32);
+        settings_changed = true;
+      }
 
-                    settings.BackgroundColor1 = GColorPurple;
-                    settings.ComplicationBorderColor = GColorPurple;
-                    settings.ComplicationBackgroundColor = GColorPurple;
-                    settings.ComplicationShadowColor = GColorPurple;
-                    if (shadowon_t) {
-                      settings.ShadowOn = shadowon_t->value->int32 == 1;
-                    }
-                        if(settings.ShadowOn){
-                          settings.MinuteHandShadowColor = GColorImperialPurple;
-                        }
-                        else {
-                        settings.MinuteHandShadowColor = GColorPurple;
-                        }
-                    settings.MinorTickColor = GColorImperialPurple;
-                    settings.DateColor = GColorRichBrilliantLavender;
-                    settings.HourDigitsColor = GColorRichBrilliantLavender;
-                    settings.MinutesHandColor = GColorRichBrilliantLavender;
-                    settings.MajorTickColor = GColorRichBrilliantLavender;
-                    settings.BatteryLineColor = GColorBulgarianRose;
-                    settings.BTQTColor = GColorImperialPurple;
-                      theme_settings_changed = true;
-                      //  APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme purple selected");
-          } else if (strcmp(themeselect_t->value->cstring, "gr") == 0) {
-              // Set the theme and other settings for "gr"
+      if (comp_background_color_t) {
+        settings.ComplicationBackgroundColor = GColorFromHEX(comp_background_color_t->value->int32);
+        settings_changed = true;
+      }
 
-                    settings.BackgroundColor1 = GColorBlack;
-                    settings.ComplicationBorderColor = GColorBlack;
-                    settings.ComplicationBackgroundColor = GColorBlack;
-                    settings.ComplicationShadowColor = GColorBlack;
-                    if (shadowon_t) {
-                      settings.ShadowOn = shadowon_t->value->int32 == 1;
-                    }
-                        if(settings.ShadowOn){
-                          settings.MinuteHandShadowColor = GColorDarkGreen;
-                        }
-                        else {
-                        settings.MinuteHandShadowColor = GColorBlack;
-                        }
-                    settings.MinorTickColor = GColorDarkGreen;
-                    settings.DateColor = GColorGreen;
-                    settings.HourDigitsColor = GColorBrightGreen;
-                    settings.MinutesHandColor = GColorBrightGreen;
-                    settings.MajorTickColor = GColorBrightGreen;
-                    settings.BatteryLineColor = GColorPastelYellow;
-                    settings.BTQTColor = GColorDarkGreen;
-                      theme_settings_changed = true;
-                      //  APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme black & green selected");
-          } else if (strcmp(themeselect_t->value->cstring, "cu") == 0) {
-              // Set the theme for "cu" and handle custom colors
-                  if (bg_color1_t) {
-                    settings.BackgroundColor1 = GColorFromHEX(bg_color1_t->value->int32);
-                    settings_changed = true;
-                  }
+      if (comp_shadow_color_t) {
+        settings.ComplicationShadowColor = GColorFromHEX(comp_shadow_color_t->value->int32);
+        settings_changed = true;
+      }
 
-                  if (comp_border_color_t) {
-                    settings.ComplicationBorderColor = GColorFromHEX(comp_border_color_t->value->int32);
-                    settings_changed = true;
-                  }
+      if (shadowon_t) {
+        settings.ShadowOn = shadowon_t->value->int32 == 1;
 
-                  if (comp_background_color_t) {
-                    settings.ComplicationBackgroundColor = GColorFromHEX(comp_background_color_t->value->int32);
-                    settings_changed = true;
-                  }
-
-                  if (comp_shadow_color_t) {
-                    settings.ComplicationShadowColor = GColorFromHEX(comp_shadow_color_t->value->int32);
-                    settings_changed = true;
-                  }
-
-                  if (shadowon_t) {
-                    settings.ShadowOn = shadowon_t->value->int32 == 1;
-
-                      if(settings.ShadowOn){
-                        if (bg_color2_t) {
-                          settings.MinuteHandShadowColor = GColorFromHEX(bg_color2_t->value->int32);
-                          settings_changed = true;
-                        }
-                      }
-                      else {
-                      settings.MinuteHandShadowColor = settings.BackgroundColor1;
-                      }
-                  }
-
-                  if (text_color2_t) {
-                    settings.MinorTickColor = GColorFromHEX(text_color2_t->value->int32);
-                    layer_mark_dirty(s_bg_layer);
-                  }
-                  
-                  if (date_color_t) {
-                    settings.DateColor = GColorFromHEX(date_color_t->value->int32);
-                    layer_mark_dirty(s_canvas_layer);
-                    layer_mark_dirty(s_date_battery_logo_layer);
-                  }
-                  if (hours_color_t) {
-                    settings.HourDigitsColor = GColorFromHEX(hours_color_t->value->int32);
-                    layer_mark_dirty(s_canvas_layer);
-                   // layer_mark_dirty(s_canvas_second_hand);
-                  }
-                 
-                  if (minutes_color_t) {
-                    settings.MinutesHandColor = GColorFromHEX(minutes_color_t->value->int32);
-                    layer_mark_dirty(s_canvas_layer);
-                  //  layer_mark_dirty(s_canvas_second_hand);
-                    layer_mark_dirty(s_date_battery_logo_layer);
-                  }
-                 
-                  if (tick_color_t) {
-                    settings.MajorTickColor = GColorFromHEX(tick_color_t->value->int32);
-                    layer_mark_dirty(s_canvas_layer);
-                    layer_mark_dirty(s_date_battery_logo_layer);
-                  }
-
-                  if (minimized_major_tick_color_t) {
-                    settings.MinimizedMajorTickColor = GColorFromHEX(minimized_major_tick_color_t->value->int32);
-                    layer_mark_dirty(s_canvas_layer);
-                    layer_mark_dirty(s_date_battery_logo_layer);
-                  }
-                  
-                  if (battery_line_color_t) {
-                    settings.BatteryLineColor = GColorFromHEX(battery_line_color_t->value->int32);
-                    layer_mark_dirty(s_canvas_battery);
-                  }
-                  if (btqt_color_t) {
-                    settings.BTQTColor = GColorFromHEX(btqt_color_t->value->int32);
-                    layer_mark_dirty(s_date_battery_logo_layer);
-                  }
-                  theme_settings_changed = true;
-                //    APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme custom selected");
-                }
+          if(settings.ShadowOn){
+            if (bg_color2_t) {
+              settings.MinuteHandShadowColor = GColorFromHEX(bg_color2_t->value->int32);
+              settings_changed = true;
+            }
           }
+          else {
+          settings.MinuteHandShadowColor = settings.BackgroundColor1;
+          }
+      }
 
-                  ///////////////////////////////
+      if (text_color2_t) {
+        settings.MinorTickColor = GColorFromHEX(text_color2_t->value->int32);
+        layer_mark_dirty(s_bg_layer);
+      }
 
-  if (settings_changed) {
+      if (date_color_t) {
+        settings.DateColor = GColorFromHEX(date_color_t->value->int32);
+        layer_mark_dirty(s_canvas_layer);
+        layer_mark_dirty(s_date_battery_logo_layer);
+      }
+      if (hours_color_t) {
+        settings.HourDigitsColor = GColorFromHEX(hours_color_t->value->int32);
+        layer_mark_dirty(s_canvas_layer);
+        // layer_mark_dirty(s_canvas_second_hand);
+      }
+
+      if (minutes_color_t) {
+        settings.MinutesHandColor = GColorFromHEX(minutes_color_t->value->int32);
+        layer_mark_dirty(s_canvas_layer);
+      //  layer_mark_dirty(s_canvas_second_hand);
+        layer_mark_dirty(s_date_battery_logo_layer);
+      }
+
+      if (tick_color_t) {
+        settings.MajorTickColor = GColorFromHEX(tick_color_t->value->int32);
+        layer_mark_dirty(s_canvas_layer);
+        layer_mark_dirty(s_date_battery_logo_layer);
+      }
+
+      if (minimized_major_tick_color_t) {
+        settings.MinimizedMajorTickColor = GColorFromHEX(minimized_major_tick_color_t->value->int32);
+        layer_mark_dirty(s_canvas_layer);
+        layer_mark_dirty(s_date_battery_logo_layer);
+      }
+
+      if (battery_line_color_t) {
+        settings.BatteryLineColor = GColorFromHEX(battery_line_color_t->value->int32);
+        layer_mark_dirty(s_canvas_battery);
+      }
+      if (btqt_color_t) {
+        settings.BTQTColor = GColorFromHEX(btqt_color_t->value->int32);
+        layer_mark_dirty(s_date_battery_logo_layer);
+      }
+      theme_settings_changed = true;
+    //    APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme custom selected");
+    } else {
+      for (ThemePreset *theme = prv_themes; theme->name[0]; theme++) {
+        if (themeselect_t && strcmp(themeselect_t->value->cstring, theme->name) != 0)
+          continue;
+
+        APP_LOG(APP_LOG_LEVEL_INFO, "Theme found: '%s'", theme->name);
+        if (shadowon_t) {
+          settings.ShadowOn = shadowon_t->value->int32 == 1;
+        }
+
+        if (settings.ShadowOn) {
+          settings.MinuteHandShadowColor = theme->MinuteHandShadowColor;
+        } else {
+          settings.MinuteHandShadowColor = theme->BackgroundColor1;
+        }
+        settings.BackgroundColor1 = theme->BackgroundColor1;
+        settings.ComplicationBackgroundColor = theme->ComplicationBorderColor;
+        settings.ComplicationBackgroundColor = theme->ComplicationBackgroundColor;
+        settings.ComplicationShadowColor = theme->ComplicationShadowColor;
+        settings.MinorTickColor = theme->MinorTickColor;
+        settings.DateColor = theme->DateColor;
+        settings.HourDigitsColor = theme->HourDigitsColor;
+        settings.MinutesHandColor = theme->MinutesHandColor;
+        settings.MinuteHandShadowColor = theme->MinuteHandShadowColor;
+        settings.MajorTickColor = theme->MajorTickColor;
+        settings.MinimizedMajorTickColor = theme->MinimizedMajorTickColor;
+        settings.MinorTickColor = theme->MinorTickColor;
+        settings.BatteryLineColor = theme->BatteryLineColor;
+        settings.BTQTColor = theme->BTQTColor;
+        settings.LocalAlarmPinColor = theme->LocalAlarmPinColor;
+        settings.SyncedAlarmPinColor = theme->SyncedAlarmPinColor;
+        settings.CalendarPinColor = theme->CalendarPinColor;
+        settings.WatchDialWindowColor = theme->WatchDialWindowColor;
+        theme_settings_changed = true;
+        break;
+      }
+
+      if (!theme_settings_changed)
+        APP_LOG(APP_LOG_LEVEL_INFO, "Theme not found: '%s'", themeselect_t->value->cstring);
+    }
+  }
+
+  ///////////////////////////////
+
+  if (settings_changed || theme_settings_changed) {
     layer_mark_dirty(s_bg_layer);
     layer_mark_dirty(s_canvas_layer);
-    //layer_mark_dirty(s_dial_layer);
-   // layer_mark_dirty(s_dial_digits_layer);
     layer_mark_dirty(s_date_battery_logo_layer);
-  //  layer_mark_dirty(s_canvas_second_hand);
     layer_mark_dirty(s_canvas_battery);
     layer_mark_dirty(s_alarm_cal_pin_layer);
   }
 
-  if (theme_settings_changed) {
-    layer_mark_dirty(s_bg_layer);
-    layer_mark_dirty(s_canvas_layer);
-    //layer_mark_dirty(s_dial_layer);
-  //  layer_mark_dirty(s_dial_digits_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  //  layer_mark_dirty(s_canvas_second_hand);
-    layer_mark_dirty(s_canvas_battery);
-  }
-
   prv_save_settings();
-
 }
 
 #if defined(SUB_MINUTE_USE_APPTIMER)
@@ -1069,8 +1076,8 @@ static void draw_complication_border_bg(FContext *fctxp, GPoint center) {
     return;
 
   int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
-  int wedgeAdj = settings.ShowTickRevealWedge ? config.ComplicationWedgeSizeAdj : 0;
-  int radius = 5 * bounds.size.w / 32 + config.ComplicationBorderAdj + orbitadj + wedgeAdj;
+  int dialWindowAdj = settings.ShowWatchDialWindow ? config.ComplicationDialWindowSizeAdj : 0;
+  int radius = 5 * bounds.size.w / 32 + config.ComplicationBorderAdj + orbitadj + dialWindowAdj;
   graphics_context_set_antialiased(fctxp->gctx, true);
 
   if (draw_background) {
@@ -1115,8 +1122,8 @@ static void render_btqt_fctx(FContext *fctxp, FPoint icons_bottom) {
 
 static GPoint get_complication_pos(int angle_native) {
   int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
-  int wedgeadj = settings.ShowTickRevealWedge ? config.ComplicationWedgeDistanceAdj : 0;
-  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj - orbitadj + wedgeadj);
+  int dialWindowAdj = settings.ShowWatchDialWindow ? config.ComplicationDialWindowDistanceAdj : 0;
+  GPoint rel_pos = polar_to_point_native(angle_native, bounds.size.w / 4 + config.ComplicationDistanceAdj - orbitadj + dialWindowAdj);
   return relative_gpoint_to_absolute(&rel_pos);
 }
 
@@ -1346,8 +1353,8 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
 static void render_battery_line(GContext *ctx, int angle_native, int s_battery_level) {
   int width_rect = (s_battery_level * config.battery_line) / 100;
   int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
-  int wedgeadj = settings.ShowTickRevealWedge ? config.ComplicationWedgeDistanceAdj : 0;
-  GPoint line_center = polar_to_point_native(angle_native, bounds.size.w/4 + config.ComplicationDistanceAdj - orbitadj + wedgeadj);
+  int dialWindowAdj = settings.ShowWatchDialWindow ? config.ComplicationDialWindowDistanceAdj : 0;
+  GPoint line_center = polar_to_point_native(angle_native, bounds.size.w/4 + config.ComplicationDistanceAdj - orbitadj + dialWindowAdj);
   line_center.x += bounds.size.w / 2;
   line_center.y += bounds.size.h / 2;
 
@@ -1433,9 +1440,9 @@ static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx) {
 
 }
 
-#define WEDGE_SWEEP_ANGLE TRIG_7_32_ANGLE
+#define DIAL_WINDOW_SWEEP_ANGLE TRIG_7_32_ANGLE
 // Max number of minutes swept by 7/32 of a circle, rounded up
-#define WEDGE_SWEEP_MINUTES ((60 + 7) + 31 / 32)
+#define DIAL_WINDOW_SWEEP_MINUTES ((60 + 7) + 31 / 32)
 
 ///update procedure for background
 static void bg_update_proc(Layer *layer, GContext *ctx) {
@@ -1443,40 +1450,40 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
 
   GRect Background = GRect(0, 0, bounds.size.w, bounds.size.h);
-  int wedge_start_angle = 0, wedge_end_angle = 0, wedge_thickness = 0;
+  int window_start_angle = 0, window_end_angle = 0, window_thickness = 0;
 
   graphics_context_set_fill_color(ctx, settings.BackgroundColor1);
   graphics_fill_rect(ctx, Background,0,GCornersAll);
 
-  if (settings.ShowTickRevealWedge && (settings.showMinorTick || settings.showMajorTick)) {
-    wedge_start_angle = hand_angle_native - (WEDGE_SWEEP_ANGLE / 2) + TRIG_QUARTER_ANGLE;
-    wedge_end_angle = hand_angle_native + (WEDGE_SWEEP_ANGLE / 2) + TRIG_QUARTER_ANGLE;
-    wedge_thickness = bounds.size.h * 5 / 32 + 1;
+  if (settings.ShowWatchDialWindow && (settings.showMinorTick || settings.showMajorTick)) {
+    window_start_angle = hand_angle_native - (DIAL_WINDOW_SWEEP_ANGLE / 2) + TRIG_QUARTER_ANGLE;
+    window_end_angle = hand_angle_native + (DIAL_WINDOW_SWEEP_ANGLE / 2) + TRIG_QUARTER_ANGLE;
+    window_thickness = bounds.size.h * 5 / 32 + 1;
 
-    // Draw the actual wedge and outline
-    graphics_context_set_fill_color(ctx, settings.TickRevealWedgeColor);
-    graphics_fill_radial(ctx, Background, GOvalScaleModeFillCircle, wedge_thickness, wedge_start_angle, wedge_end_angle);
+    // Draw the actual window and outline
+    graphics_context_set_fill_color(ctx, settings.WatchDialWindowColor);
+    graphics_fill_radial(ctx, Background, GOvalScaleModeFillCircle, window_thickness, window_start_angle, window_end_angle);
 
     graphics_context_set_antialiased(ctx, true);
     graphics_context_set_stroke_width(ctx, 2);
     graphics_context_set_stroke_color(ctx, settings.ComplicationShadowColor);
-    draw_radial_line(ctx, wedge_start_angle, wedge_thickness - 1, settings.ComplicationShadowColor);
-    draw_radial_line(ctx, wedge_end_angle, wedge_thickness - 1, settings.ComplicationShadowColor);
+    draw_radial_line(ctx, window_start_angle, window_thickness - 1, settings.ComplicationShadowColor);
+    draw_radial_line(ctx, window_end_angle, window_thickness - 1, settings.ComplicationShadowColor);
 
-    GRect wedge_border_arc = GRect(Background.origin.x + wedge_thickness, Background.origin.y + wedge_thickness, Background.size.w - 2 * wedge_thickness, Background.size.h - 2 * wedge_thickness);
-    graphics_draw_arc(ctx, wedge_border_arc, GOvalScaleModeFillCircle, wedge_start_angle, wedge_end_angle);
+    GRect window_border_arc = GRect(Background.origin.x + window_thickness, Background.origin.y + window_thickness, Background.size.w - 2 * window_thickness, Background.size.h - 2 * window_thickness);
+    graphics_draw_arc(ctx, window_border_arc, GOvalScaleModeFillCircle, window_start_angle, window_end_angle);
     #if PBL_RECT
-    graphics_draw_arc(ctx, Background, GOvalScaleModeFillCircle, wedge_start_angle, wedge_end_angle);
+    graphics_draw_arc(ctx, Background, GOvalScaleModeFillCircle, window_start_angle, window_end_angle);
     #endif
   }
 
   if (settings.showMinorTick) {
     int min_start = 0, min_end = 59;
 
-    if (settings.ShowTickRevealWedge) {
-      // Only render parts under the wedge.  Alwaays start with a pos angle because div is weird with neg
-      min_start = ((wedge_start_angle + TRIG_MAX_ANGLE) * 60 + TRIG_MAX_ANGLE - 1) / TRIG_MAX_ANGLE;
-      min_end = ((wedge_end_angle + TRIG_MAX_ANGLE) * 60) / TRIG_MAX_ANGLE;
+    if (settings.ShowWatchDialWindow) {
+      // Only render parts under the window.  Alwaays start with a pos angle because div is weird with neg
+      min_start = ((window_start_angle + TRIG_MAX_ANGLE) * 60 + TRIG_MAX_ANGLE - 1) / TRIG_MAX_ANGLE;
+      min_end = ((window_end_angle + TRIG_MAX_ANGLE) * 60) / TRIG_MAX_ANGLE;
     }
 
     for (int i = min_start; i <= min_end; i++) {
@@ -1491,9 +1498,9 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
     int hr_end = 25;
     bool ends_reversed = 0;
 
-    if (settings.ShowTickRevealWedge) {
-      hr_start = modulus(((wedge_start_angle + TRIG_MAX_ANGLE) * 12 + TRIG_MAX_ANGLE - 1) / TRIG_MAX_ANGLE, 12);
-      hr_end = modulus(((wedge_end_angle + TRIG_MAX_ANGLE) * 12) / TRIG_MAX_ANGLE, 12);
+    if (settings.ShowWatchDialWindow) {
+      hr_start = modulus(((window_start_angle + TRIG_MAX_ANGLE) * 12 + TRIG_MAX_ANGLE - 1) / TRIG_MAX_ANGLE, 12);
+      hr_end = modulus(((window_end_angle + TRIG_MAX_ANGLE) * 12) / TRIG_MAX_ANGLE, 12);
       ends_reversed = hr_start > hr_end;
     }
 
@@ -1502,10 +1509,10 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
       int tick_length = 16; // Length of the major tick
       GColor tick_color = (i == 6 || i == 12 || i == 3 || i == 9 || i == 0) ? settings.MajorTickColor : settings.MinorTickColor;
 
-      if (settings.ShowTickRevealWedge &&
+      if (settings.ShowWatchDialWindow &&
           ((!ends_reversed && (i < hr_start || i > hr_end)) ||
           (ends_reversed && (i < hr_start && i > hr_end)))) {
-        tick_length = 6;  // major tick is smaller outside of the wedge
+        tick_length = 6;  // major tick is smaller outside of the window
         tick_color = settings.MinimizedMajorTickColor;
       }
 
