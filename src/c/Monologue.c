@@ -72,8 +72,8 @@ typedef struct {
   int minortickrect_w;
   int minortickrect_h;
   int tick_inset_outer;
-  int SecondsCentreOuterRadius;
-  int SecondsCentreInnerRadius;
+  int HandCentreOuterRadius;
+  int HandCentreInnerRadius;
   int ComplicationBorderAdj;
   int ComplicationDistanceAdj;
   int ComplicationOrbitSizeAdj;
@@ -101,8 +101,8 @@ static const UIConfig config = {
 .minortickrect_w = 90,
 .minortickrect_h = 104,
 .tick_inset_outer = -10,
-.SecondsCentreOuterRadius = 1,
-.SecondsCentreInnerRadius = 0,
+.HandCentreOuterRadius = 0,
+.HandCentreInnerRadius = 0,
 .ComplicationBorderAdj = 4,
 .ComplicationDistanceAdj = 6,
 .ComplicationOrbitSizeAdj = 2,
@@ -121,8 +121,8 @@ static const UIConfig config = {
 .analogue_hand_b = 4,
 .hands_shadow = 2,
 .analogue_hand_c = 40,
-.SecondsCentreOuterRadius = 1,
-.SecondsCentreInnerRadius = 0,
+.HandCentreOuterRadius = 0,
+.HandCentreInnerRadius = 0,
 .ComplicationBorderAdj = 2,
 .ComplicationDistanceAdj = 2,
 .ComplicationOrbitSizeAdj = 3,
@@ -306,8 +306,8 @@ static void prv_default_settings(void) {
   settings.RemoveZero24h = false;
   //settings.showlocalAMPM = true;
   settings.ForegroundShape = true;  //true = round, false = rect
-  settings.CentreSize = config.SecondsCentreOuterRadius;
-  settings.InnerCentreSize = config.SecondsCentreInnerRadius;
+  settings.CentreSize = config.HandCentreOuterRadius;
+  settings.InnerCentreSize = config.HandCentreInnerRadius;
   settings.HandThickness = 2;
   settings.DigitalHour = true;
   settings.BackSize = 0;
@@ -875,6 +875,9 @@ static void draw_line_hand(GContext *ctx, int angle, int length, int back_length
 
 
 static void draw_hand_center(GContext *ctx, GColor outer_color, GColor inner_color) {
+  if (settings.CentreSize == 0 && settings.InnerCentreSize == 0)
+    return;
+
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
   graphics_context_set_antialiased(ctx, true);
 

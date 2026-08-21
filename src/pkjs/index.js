@@ -3,9 +3,9 @@
 var Clay = require('@rebble/clay');
 // Load our Clay configuration file
 var clayConfig = require('./config');
-//var customClay = require('./custom-clay')
+var customClay = require('./custom-clay')
 // Initialize Clay
-var clay = new Clay(clayConfig);//, customClay);
+var clay = new Clay(clayConfig, customClay);
 
 // ---------------------------------------------------------------------------
 // Synced alarm/timer Timeline pins

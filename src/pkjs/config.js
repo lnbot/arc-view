@@ -5,7 +5,7 @@ module.exports = [
   },
   {
     "type": "text",
-    "defaultValue": "<p>by astosia</p>"
+    "defaultValue": "<p>by lnbot</p>"
   },
   {
     "type": "section",
@@ -44,7 +44,6 @@ module.exports = [
         "label": "Orbiting Complications",
         "messageKey": "OrbitComplications",
         "description": "Complications orbit the center of the watch face",
-        "capabilities": [ "NOT_BW" ],
         "defaultValue": true
       },
       {
@@ -52,7 +51,6 @@ module.exports = [
         "label": "Orbiting Watch Dial Window",
         "messageKey": "ShowWatchDialWindow",
         "description": "Window that follows the minute hand and reveals the dial ticks underneath. Only enabled with round watchface and orbiting complications.",
-        "capabilities": [ "NOT_BW" ],
         "defaultValue": false
       },
       {
@@ -60,7 +58,6 @@ module.exports = [
         "label": "Alarm, Timer, and Calendar Sync",
         "messageKey": "EnableAlarmCalendarSync",
         "description": "Show upcoming alarms, timers, and calendar events on the watch face.  Requires companion app to be installed on the phone.",
-        "capabilities": [ "NOT_BW" ],
         "defaultValue": false
       },
       {
@@ -68,7 +65,6 @@ module.exports = [
         "label": "Alarm Timeline Pin",
         "messageKey": "TimelineAlarmPin",
         "description": "Place a 'Phone alarm' pin on the Timeline whenever a new alarm time is synced.  Expired and deleted alarms are removed from the timeline.",
-        "capabilities": [ "NOT_BW" ],
         "defaultValue": false
       },
       {
@@ -76,7 +72,6 @@ module.exports = [
         "label": "Timer Timeline Pin",
         "messageKey": "TimelineTimerPin",
         "description": "Place a 'Phone timer' pin on the Timeline whenever a new timer is synced.  Expired and deleted timers are removed from the timeline.",
-        "capabilities": [ "NOT_BW" ],
         "defaultValue": false
       },
       {
@@ -145,13 +140,6 @@ module.exports = [
         "min": -5,
         "max": 10,
         "step": 1
-      },
-      {
-        "type": "toggle",
-        "messageKey": "VibeOn",
-        "label": "Vibrate on Bluetooth disconnect during Quiet Time",
-        "description": "If set to off, will still vibrate on disconnect, but not during quiet time",
-        "defaultValue": false
       },
       {
         "type": "toggle",
@@ -392,7 +380,7 @@ module.exports = [
       },
       {
         "type": "color",
-        "label": "Minimized Major Tickmark Colour (for Reveal Wedge)",
+        "label": "Minimized Major Tickmark Colour (outside of Watch Dial Window)",
         "messageKey": "MinimizedMajorTickColor",
         "defaultValue": "000000"
       },
@@ -555,9 +543,9 @@ module.exports = [
         "type": "slider",
         "label": "Hand Centre Radius",
         "messageKey": "CentreSize",
-        "defaultValue": 1,
-        "description": "Default = 1",
-        "min": 1,
+        "defaultValue": 0,
+        "description": "Default = 0",
+        "min": 0,
         "max": 15,
         "step": 1
       },
