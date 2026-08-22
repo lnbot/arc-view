@@ -132,6 +132,7 @@ static const UIConfig config = {
 #endif
 
 bool connected = true;
+time_t next_alarm_time = 0;
 
 //function prototypes
 
@@ -779,11 +780,10 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
   time_t now = time(NULL);
 
   // Draw local alarm pin if it's going off within the next hour
-  time_t local_alarm;
-  if (alarm_service_peek_next(&local_alarm)) {
-    time_t diff = local_alarm - now;
+  if (next_alarm_time) {
+    time_t diff = next_alarm_time - now;
     if (diff <= 3599) {  // within the next 59 min 59 sec
-      struct tm *lalarm_tm = localtime(&local_alarm);
+      struct tm *lalarm_tm = localtime(&next_alarm_time);
       draw_event_pin(ctx, lalarm_tm->tm_min, 0, settings.LocalAlarmPinColor);
     }
   }
@@ -1398,7 +1398,12 @@ static void prv_window_load(Window *window) {
   // Load fctx ffonts
   Date_Font = ffont_create_from_resource(RESOURCE_ID_FONT_DATE_FCTX);
   FontBTQTIconsFctx = ffont_create_from_resource(RESOURCE_ID_FONT_DRIPICONS_FCTX);
-  
+
+  // App exits when another app starts so this shouldn't change for this instance
+  if (!alarm_service_peek_next(&next_alarm_time)) {
+    next_alarm_time = 0;
+  }
+
   // Subscribe to the connection service to get Bluetooth status updates.
   connection_service_subscribe((ConnectionHandlers){
     .pebble_app_connection_handler = bluetooth_vibe_icon
