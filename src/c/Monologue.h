@@ -72,4 +72,6 @@ typedef struct ClaySettings {
   GColor MinimizedMajorTickColor;
   GColor ComplicationBackgroundColor;
   GColor LocalAlarmPinColor;
+  bool BlankFaceMode;
+  bool QuietTimeBlankFace;
 } __attribute__((__packed__)) ClaySettings;

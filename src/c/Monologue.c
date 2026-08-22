@@ -156,6 +156,8 @@ static void prv_window_load(Window *window);
 static void prv_window_unload(Window *window);
 static void prv_init(void);
 static void prv_deinit(void);
+static bool use_minute_hand();
+static bool skip_render_complications();
 
 // Save settings to persistent storage
 static void prv_save_settings(void) {
@@ -219,6 +221,17 @@ static void prv_default_settings(void) {
   settings.TimelineTimerPin = false;
   settings.ShowWatchDialWindow = false;
   settings.WatchDialWindowColor = GColorWhite;
+  settings.BlankFaceMode = false;
+  settings.QuietTimeBlankFace = false;
+}
+
+static bool use_minute_hand() {
+  return !skip_render_complications() && settings.DigitalHour;
+}
+
+static bool skip_render_complications() {
+  return (settings.BlankFaceMode && !settings.QuietTimeBlankFace) ||
+    (settings.BlankFaceMode && settings.QuietTimeBlankFace && quiet_time_is_active());
 }
 
 static void bluetooth_vibe_icon (bool connected) {
@@ -291,6 +304,10 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *show_watch_dial_window_t = dict_find(iter, MESSAGE_KEY_ShowWatchDialWindow);
   Tuple *watch_dial_window_color_t = dict_find(iter, MESSAGE_KEY_WatchDialWindowColor);
   Tuple *minimized_major_tick_color_t = dict_find(iter, MESSAGE_KEY_MinimizedMajorTickColor);
+  Tuple *blank_face_t = dict_find(iter,MESSAGE_KEY_BlankFaceMode);
+  Tuple *qt_blank_face_t = dict_find(iter,MESSAGE_KEY_QuietTimeBlankFace);
+
+  bool oldUseMinuteHand = use_minute_hand();
 
   if (dict_find(iter, MESSAGE_KEY_XCLAYUserThemes)) {
     // This is a potentially massive blob, and it should be filtered out
@@ -304,12 +321,21 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   }
 
   if (dig_t) {
-    bool oldDigitalHour = settings.DigitalHour;
     settings.DigitalHour = dig_t->value->int32 != 0;
+    layer_mark_dirty(s_bg_layer);
+    layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
 
-    if (oldDigitalHour != settings.DigitalHour)
-      hand_angle_native = calculate_hand_angle(prv_tick_time);
+  if (qt_blank_face_t) {
+    settings.QuietTimeBlankFace = qt_blank_face_t->value->int32 != 0;
+    layer_mark_dirty(s_bg_layer);
+    layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
 
+  if (blank_face_t) {
+    settings.BlankFaceMode = blank_face_t->value->int32 != 0;
     layer_mark_dirty(s_bg_layer);
     layer_mark_dirty(s_canvas_layer);
     layer_mark_dirty(s_date_battery_logo_layer);
@@ -511,6 +537,10 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     settings.WatchDialWindowColor = GColorFromHEX(watch_dial_window_color_t->value->int32);
     settings_changed = true;
   }
+
+  // Force the hand to switch between hours and minutes
+  if (oldUseMinuteHand != use_minute_hand())
+    hand_angle_native = calculate_hand_angle(prv_tick_time);
 
   /////////////////////////////////////
   // Set the colors for the watchface
@@ -746,7 +776,7 @@ static void draw_event_pin(GContext *ctx, int hour, int minute, int second, GCol
   static const int pin_length = 13; // Halfway between major and minor tick lengths with room for an outline
   static const int pin_half_angle = DEG_TO_TRIGANGLE(35); // Half of the angle for the pin's width
 
-  int angle_native = settings.DigitalHour ?
+  int angle_native = use_minute_hand() ?
     (TRIG_MAX_ANGLE * minute / 60) + (TRIG_MAX_ANGLE * second / 3600) - TRIG_QUARTER_ANGLE :
     (TRIG_MAX_ANGLE * hour / 12) + (TRIG_MAX_ANGLE * minute / 720) + (TRIG_MAX_ANGLE * second / (12 * 60 * 60)) - TRIG_QUARTER_ANGLE;
   int pin_center_angle = angle_native - TRIG_QUARTER_ANGLE;
@@ -785,7 +815,7 @@ static void draw_event_pin(GContext *ctx, int hour, int minute, int second, GCol
 
 static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
   // When using minute hand, 1 hour, otherwise, 12 hours
-  uint32_t timeThresholdSec = settings.DigitalHour ? 60 * 60 : 12 * 60 * 60;
+  uint32_t timeThresholdSec = use_minute_hand() ? 60 * 60 : 12 * 60 * 60;
   time_t now = time(NULL);
 
   // Draw local alarm pin if it's going off within the next hour
@@ -1013,7 +1043,7 @@ static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
 
   fctx_set_offset(fctxp, hour_pos);
   fctx_set_offset(fctxp, hour_pos);
-  if(settings.DigitalHour){
+  if(use_minute_hand()){
     fctx_draw_string(fctxp, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
   }
   else{
@@ -1172,6 +1202,9 @@ static inline int get_base_angle() {
 }
 
 static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
+  if (skip_render_complications())
+    return;
+
   int base_angle = get_base_angle();
 
   //APP_LOG(APP_LOG_LEVEL_INFO, "update_logo_date_battery_fctx_layer");
@@ -1228,6 +1261,8 @@ static void layer_update_proc_battery_line(Layer *layer, GContext *ctx) {
   if (!settings.EnableBattery && !settings.EnableBatteryLine) {
       return;
   }
+  if (skip_render_complications())
+    return;
 
   int s_battery_level = battery_state_service_peek().charge_percent;
 
@@ -1257,7 +1292,7 @@ int calculate_hand_angle(struct tm *prv_tm) {
   // Using native trig angles since we're dealing with small fractions of degrees
   int angle;
 
-  if (settings.DigitalHour) {
+  if (use_minute_hand()) {
     angle = (TRIG_MAX_ANGLE * prv_tm->tm_min / 60) - TRIG_QUARTER_ANGLE;
     
     if (settings.SmoothMinuteHand) {
@@ -1338,7 +1373,7 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
 
   if (settings.showMinorTick) {
     // 4 ticks per hour with an hour hand
-    int num_ticks = settings.DigitalHour ? 60 : 12 * 4;
+    int num_ticks = use_minute_hand() ? 60 : 12 * 4;
     int tick_start = 0, tick_end = num_ticks - 1;
 
     if (settings.ShowWatchDialWindow) {

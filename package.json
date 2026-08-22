@@ -90,6 +90,8 @@
       "ShowWatchDialWindow",
       "WatchDialWindowColor",
       "MinimizedMajorTickColor",
+      "BlankFaceMode",
+      "QuietTimeBlankFace",
       "XCLAYUserThemes",
       "XCLAYActiveTheme"
     ],

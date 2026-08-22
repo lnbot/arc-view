@@ -19,7 +19,7 @@ module.exports = function(minified) {
 
   // Returns a event handler for Clay that turns off 'messageKey' if any
   // of the required toggles aren't in the right position
-  function makeRequireToggleFunc(messageKey, requirements) {
+  function makeRequireAllToggleFunc(messageKey, requirements) {
     return function() {
       if (requirements.every((req) => toggleIsSet(req, true))) {
         clayConfig.getItemByMessageKey(messageKey).enable();
@@ -29,12 +29,26 @@ module.exports = function(minified) {
     };
   }
 
+  // Returns a event handler for Clay that turns off 'messageKey' if any
+  // of the required toggles aren't in the right position
+  function makeRequireAnyToggleFunc(messageKey, requirements) {
+    return function() {
+      if (requirements.some((req) => toggleIsSet(req, true))) {
+        clayConfig.getItemByMessageKey(messageKey).enable();
+      } else {
+        clayConfig.getItemByMessageKey(messageKey).disable();
+      }
+    };
+  }
+
   // Sets requirements for a config item to be active based on a list toggles
-  function setItemRequirements(messageKey, requirements) {
+  function setItemRequirements(messageKey, requirements, testFunc) {
+    var testFunc = testFunc ? testFunc : makeRequireAllToggleFunc;
+
     requirements.forEach((req) => {
       var item = clayConfig.getItemByMessageKey(req.replace(/^!/, ''));
       if (item) {
-        var func = makeRequireToggleFunc(messageKey, requirements)
+        var func = testFunc(messageKey, requirements)
         item.on('change', func);
 
         // Use the callback once to set the initial state
@@ -411,6 +425,8 @@ module.exports = function(minified) {
       setItemRequirements("TimelineTimerPin", ["EnableAlarmCalendarSync"]);
       setItemRequirements("PosTop", ["!OrbitComplications"]);
       setItemRequirements("LogoText", ["EnableLogo"]);
+      setItemRequirements("DigitalHour", ["!BlankFaceMode", "QuietTimeBlankFace"], makeRequireAnyToggleFunc);
+      setItemRequirements("QuietTimeBlankFace", ["BlankFaceMode"]);
 
       Themes.init(document);
 

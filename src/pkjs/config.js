@@ -269,6 +269,20 @@ module.exports = [
             "value": "lo"
           }
         ]
+        },
+        {
+        "type": "toggle",
+        "messageKey": "BlankFaceMode",
+        "label": "Blank Face Mode",
+        "description": "Blanks out complications, forces hand to be hour hand when active.",
+        "defaultValue": false
+        },
+        {
+        "type": "toggle",
+        "messageKey": "QuietTimeBlankFace",
+        "label": "Blank Face during Quiet Time",
+        "description": "Blanks out complications only during Quiet Time.  Forced hour hand only during Quiet Time.",
+        "defaultValue": false
         }
     ]
   },
