@@ -304,7 +304,12 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   }
 
   if (dig_t) {
+    bool oldDigitalHour = settings.DigitalHour;
     settings.DigitalHour = dig_t->value->int32 != 0;
+
+    if (oldDigitalHour != settings.DigitalHour)
+      hand_angle_native = calculate_hand_angle(prv_tick_time);
+
     layer_mark_dirty(s_bg_layer);
     layer_mark_dirty(s_canvas_layer);
     layer_mark_dirty(s_date_battery_logo_layer);
@@ -737,11 +742,13 @@ static void draw_hand_center(GContext *ctx, GColor outer_color, GColor inner_col
 
 }
 
-static void draw_event_pin(GContext *ctx, int minute, int second, GColor color) {
+static void draw_event_pin(GContext *ctx, int hour, int minute, int second, GColor color) {
   static const int pin_length = 13; // Halfway between major and minor tick lengths with room for an outline
   static const int pin_half_angle = DEG_TO_TRIGANGLE(35); // Half of the angle for the pin's width
 
-  int angle_native = (TRIG_MAX_ANGLE * minute / 60) + (TRIG_MAX_ANGLE * second / 3600) - TRIG_QUARTER_ANGLE;
+  int angle_native = settings.DigitalHour ?
+    (TRIG_MAX_ANGLE * minute / 60) + (TRIG_MAX_ANGLE * second / 3600) - TRIG_QUARTER_ANGLE :
+    (TRIG_MAX_ANGLE * hour / 12) + (TRIG_MAX_ANGLE * minute / 720) + (TRIG_MAX_ANGLE * second / (12 * 60 * 60)) - TRIG_QUARTER_ANGLE;
   int pin_center_angle = angle_native - TRIG_QUARTER_ANGLE;
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
   GPoint edge;
@@ -777,14 +784,16 @@ static void draw_event_pin(GContext *ctx, int minute, int second, GColor color) 
 }
 
 static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
+  // When using minute hand, 1 hour, otherwise, 12 hours
+  uint32_t timeThresholdSec = settings.DigitalHour ? 60 * 60 : 12 * 60 * 60;
   time_t now = time(NULL);
 
   // Draw local alarm pin if it's going off within the next hour
   if (next_alarm_time) {
-    time_t diff = next_alarm_time - now;
-    if (diff <= 3599) {  // within the next 59 min 59 sec
+    uint32_t diff = next_alarm_time - now;
+    if (diff < timeThresholdSec) {
       struct tm *lalarm_tm = localtime(&next_alarm_time);
-      draw_event_pin(ctx, lalarm_tm->tm_min, 0, settings.LocalAlarmPinColor);
+      draw_event_pin(ctx, lalarm_tm->tm_hour, lalarm_tm->tm_min, 0, settings.LocalAlarmPinColor);
     }
   }
 
@@ -797,10 +806,10 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
   uint32_t alarm_epoch = alarm_calendar_sync_get_alarm();
   if (alarm_epoch != 0) {
     uint32_t diff = alarm_epoch - now;
-    if (diff <= 3599) {  // within the next 59 min 59 sec
+    if (diff < timeThresholdSec) {
       time_t t = (time_t)alarm_epoch;
       struct tm *alarm_tm = localtime(&t);
-      draw_event_pin(ctx, alarm_tm->tm_min, 0, settings.SyncedAlarmPinColor);
+      draw_event_pin(ctx, alarm_tm->tm_hour, alarm_tm->tm_min, 0, settings.SyncedAlarmPinColor);
     }
   }
 
@@ -809,10 +818,10 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
   uint32_t timer_epoch = alarm_calendar_sync_get_timer();
   if (timer_epoch != 0) {
     uint32_t diff = timer_epoch - now;
-    if (diff <= 3599) {  // timer completes within the next 59 min 59 sec
+    if (diff < timeThresholdSec) {
       time_t t = (time_t)timer_epoch;
       struct tm *timer_tm = localtime(&t);
-      draw_event_pin(ctx, timer_tm->tm_min, timer_tm->tm_sec, settings.SyncedAlarmPinColor);
+      draw_event_pin(ctx, timer_tm->tm_hour, timer_tm->tm_min, timer_tm->tm_sec, settings.SyncedAlarmPinColor);
     }
   }
 
@@ -824,10 +833,10 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
       continue;
     }
     uint32_t diff = event_epoch - now;
-    if (diff <= 3599) {
+    if (diff < timeThresholdSec) {
       time_t t = (time_t)event_epoch;
       struct tm *event_tm = localtime(&t);
-      draw_event_pin(ctx, event_tm->tm_min, 0, settings.CalendarPinColor);
+      draw_event_pin(ctx, event_tm->tm_hour, event_tm->tm_min, 0, settings.CalendarPinColor);
     }
   }
 }
@@ -1328,17 +1337,19 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
   }
 
   if (settings.showMinorTick) {
-    int min_start = 0, min_end = 59;
+    // 4 ticks per hour with an hour hand
+    int num_ticks = settings.DigitalHour ? 60 : 12 * 4;
+    int tick_start = 0, tick_end = num_ticks - 1;
 
     if (settings.ShowWatchDialWindow) {
       // Only render parts under the window.  Alwaays start with a pos angle because div is weird with neg
-      min_start = ((window_start_angle + TRIG_MAX_ANGLE) * 60 + TRIG_MAX_ANGLE - 1) / TRIG_MAX_ANGLE;
-      min_end = ((window_end_angle + TRIG_MAX_ANGLE) * 60) / TRIG_MAX_ANGLE;
+      tick_start = ((window_start_angle + TRIG_MAX_ANGLE) * num_ticks + TRIG_MAX_ANGLE - 1) / TRIG_MAX_ANGLE;
+      tick_end = ((window_end_angle + TRIG_MAX_ANGLE) * num_ticks) / TRIG_MAX_ANGLE;
     }
 
-    for (int i = min_start; i <= min_end; i++) {
+    for (int i = tick_start; i <= tick_end; i++) {
       // Angles are cyclical so it doesn't matter if i is in the range 0..59
-      int angle_native = i * TRIG_MAX_ANGLE / 60 - TRIG_QUARTER_ANGLE;
+      int angle_native = i * TRIG_MAX_ANGLE / num_ticks - TRIG_QUARTER_ANGLE;
       draw_minor_tick(ctx, angle_native, settings.MinorTickColor);
     }
   }
