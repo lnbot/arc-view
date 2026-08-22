@@ -491,7 +491,7 @@ module.exports = [
         "messageKey": "BackLen",
         "defaultValue": 4,
         "description": "Default = 4",
-        "min": 0,
+        "min": -60,
         "max": 40,
         "step": 2
       }
