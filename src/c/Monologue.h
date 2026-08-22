@@ -73,24 +73,3 @@ typedef struct ClaySettings {
   GColor ComplicationBackgroundColor;
   GColor LocalAlarmPinColor;
 } __attribute__((__packed__)) ClaySettings;
-
-typedef struct {
-  char name[4];
-  GColor BackgroundColor1;
-  GColor ComplicationBorderColor;
-  GColor ComplicationBackgroundColor;
-  GColor ComplicationShadowColor;
-  GColor DateColor;
-  GColor HourDigitsColor;
-  GColor MinutesHandColor;
-  GColor MinuteHandShadowColor;
-  GColor MajorTickColor;
-  GColor MinimizedMajorTickColor;
-  GColor MinorTickColor;
-  GColor BatteryLineColor;
-  GColor BTQTColor;
-  GColor LocalAlarmPinColor;
-  GColor SyncedAlarmPinColor;
-  GColor CalendarPinColor;
-  GColor WatchDialWindowColor;
-} ThemePreset;

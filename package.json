@@ -75,7 +75,6 @@
       "MinutesHandBorderColor",
       "SecondsHandColor",
       "BatteryLineColor",
-      "ThemeSelect",
       "Font",
       "VibeOn",
       "ForegroundShape",
@@ -90,7 +89,9 @@
       "CalendarPinColor",
       "ShowWatchDialWindow",
       "WatchDialWindowColor",
-      "MinimizedMajorTickColor"
+      "MinimizedMajorTickColor",
+      "XCLAYUserThemes",
+      "XCLAYActiveTheme"
     ],
     "resources": {
       "media": [

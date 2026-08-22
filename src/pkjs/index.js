@@ -1,11 +1,31 @@
 // Import the Clay package
-//var Clay = require('pebble-clay');
 var Clay = require('@rebble/clay');
 // Load our Clay configuration file
 var clayConfig = require('./config');
-var customClay = require('./custom-clay')
+var customClay = require('./custom-clay');
+var Themes = require('./themes');
+var MessageKeys = require('message_keys');
+
+var builtinThemes = Themes.fetchBuiltinThemes();
+
 // Initialize Clay
-var clay = new Clay(clayConfig, customClay);
+var clay = new Clay(clayConfig, customClay, { userData: { builtinThemes: builtinThemes } });
+
+// Intercept settings after they're saved to localStorage, but before they're sent to the watch.
+// These are potentially long strings and are irrelevant to the watchface.
+var oldGetSettings = clay.getSettings;
+clay.getSettings = (response, convert) => {
+  var ret = oldGetSettings(response, convert);
+
+  for (var key of [MessageKeys.XCLAYUserThemes, MessageKeys.XCLAYActiveTheme]) {
+    if (key in ret) {
+      delete ret[key];
+    }
+  }
+
+  return ret;
+}
+
 
 // ---------------------------------------------------------------------------
 // Synced alarm/timer Timeline pins

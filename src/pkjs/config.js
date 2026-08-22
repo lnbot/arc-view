@@ -286,45 +286,45 @@ module.exports = [
       },
       {
         "type": "toggle",
-       "label": "Minute Hand Shadow On",
-       "messageKey": "ShadowOn",
-       "defaultValue": true
+        "label": "Minute Hand Shadow On",
+        "messageKey": "ShadowOn",
+        "defaultValue": true
       },
       {
         "type": "radiogroup",
-        "messageKey": "ThemeSelect",
+        "id": "ThemeSelect",
         "defaultValue": "wh",
         "label": "COLOUR THEME SELECT",
+        "description": "Changes to *built-in themes will be applied, but not saved to the theme.",
         "options": [
           {
-            "label": "White Background",
-            "value": "wh"
-          },
-          {
-            "label": "Black Background",
-            "value": "bl"
-          },
-          {
-              "label": "Blue Background",
-              "value": "bu"
-          },
-          {
-              "label": "Purple Background",
-              "value": "pl"
-          },
-          {
-              "label": "Black & Green",
-              "value": "gr"
-          },
-          {
-            "label": "Custom Colours",
-            "value": "cu"
+            "label": "%TemplateLabel",
+            "value": "%TemplateValue"
           }
-        ]
+        ],
+        "attributes": {
+          "id": "ThemeSelectRadioGroup",
+        }
       },
       {
-           "type": "heading",
-           "defaultValue": "Custom Colours"
+         "type": "input",
+         "id": "ThemeCopyDelete",
+         "label": "New theme name for 'Copy theme' or type 'delete' before 'Delete theme'",
+         "attributes": {
+           "placeholder": "New theme name / 'delete'"
+         }
+      },
+      {
+        "type": "button",
+        "id": "CopyThemeButton",
+        "primary": false,
+        "defaultValue": "Copy theme"
+      },
+      {
+        "type": "button",
+        "id": "DeleteThemeButton",
+        "primary": false,
+        "defaultValue": "Delete theme"
       },
       {
         "type": "color",
@@ -435,90 +435,6 @@ module.exports = [
     ]
   },
   {
-    "type": "section",
-    "capabilities": [ "BW" ],
-    "items": [
-      {
-        "type": "heading",
-        "defaultValue": "Colours"
-      },
-      {
-        "type": "toggle",
-       "label": "Minute Hand Shadow On",
-       "messageKey": "BWShadowOn",
-       "defaultValue": true
-      },
-       {
-         "type": "radiogroup",
-         "messageKey": "BWThemeSelect",
-         "defaultValue": "wh",
-         "label": "COLOUR THEME SELECT",
-         "options": [
-           {
-             "label": "White Background",
-             "value": "wh"
-           },
-           {
-             "label": "Black Background",
-             "value": "bl"
-           },
-           {
-             "label": "Custom Colours",
-             "value": "cu"
-           }
-         ]
-       },
-          {
-            "type": "heading",
-            "defaultValue": "Custom Colours"
-          },
-      {
-        "type": "color",
-        "label": "Background Colour",
-        "messageKey": "BWBackgroundColor1",
-        "defaultValue": "FFFFFF",
-        "allowGray": true
-      },
-      {
-        "type": "color",
-        "label": "Minute Hand Shadow Colour",
-        "messageKey": "BWMinuteHandShadowColor",
-        "defaultValue": "AAAAAA",
-        "allowGray": true
-      },
-      {
-        "type": "color",
-        "label": "Tickmark Colour",
-        "messageKey": "BWMajorTickColor",
-        "defaultValue": "000000"
-      },
-      {
-        "type": "color",
-        "label": "Minute Hand & Battery Line Colour",
-        "messageKey": "BWMinHandBatLineColor",
-        "defaultValue": "000000"
-      },
-      {
-        "type": "color",
-        "label": "Hours Digits Colour",
-        "messageKey": "BWHourDigitsColor",
-        "defaultValue": "000000"
-      },
-      {
-        "type": "color",
-        "label": "Date, Battery Value & Logo Text Colour",
-        "messageKey": "BWDateColor",
-        "defaultValue": "000000"
-      },
-      {
-        "type": "color",
-        "label": "Quiet Time and Bluetooth Icon Colour",
-        "messageKey": "BWBTQTColor",
-        "defaultValue": "000000"
-      }
-    ]
-  },
-  {
     "type": "submit",
     "defaultValue": "Save"
   },
@@ -584,5 +500,21 @@ module.exports = [
   {
     "type": "submit",
     "defaultValue": "Save"
+  },
+  {
+    "type": "input",
+    "id": "XCLAYUserThemes",
+    "messageKey": "XCLAYUserThemes",
+    "attributes": {
+      "id": "UserThemesInput"
+    }
+  },
+  {
+    "type": "input",
+    "id": "XCLAYActiveTheme",
+    "messageKey": "XCLAYActiveTheme",
+    "attributes": {
+      "id": "ActiveThemeInput"
+    }
   },
 ];

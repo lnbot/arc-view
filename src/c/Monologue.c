@@ -131,111 +131,6 @@ static const UIConfig config = {
 };
 #endif
 
-// Built-in themes. Match with values in config.js
-static ThemePreset prv_themes[] = {
-  {
-    .name = "wh",
-    .BackgroundColor1 = GColorWhite,
-    .ComplicationBorderColor = GColorLightGray,
-    .ComplicationBackgroundColor = GColorWhite,
-    .ComplicationShadowColor = GColorDarkGray,
-    .DateColor = GColorDarkGray,
-    .HourDigitsColor = GColorCobaltBlue,
-    .MinutesHandColor = GColorCobaltBlue,
-    .MinuteHandShadowColor = GColorBabyBlueEyes,
-    .MajorTickColor = GColorCobaltBlue,
-    .MinimizedMajorTickColor = GColorCobaltBlue,
-    .MinorTickColor = GColorCobaltBlue,
-    .BatteryLineColor = GColorOrange,
-    .BTQTColor = GColorDarkGray,
-    .LocalAlarmPinColor = GColorScreaminGreen,
-    .SyncedAlarmPinColor = GColorRichBrilliantLavender,
-    .CalendarPinColor = GColorCadetBlue,
-    .WatchDialWindowColor = GColorVeryLightBlue,
-  },
-  {
-    .name = "bl",
-    .BackgroundColor1 = GColorBlack,
-    .ComplicationBorderColor = GColorDarkGray,
-    .ComplicationBackgroundColor = GColorBlack,
-    .ComplicationShadowColor = GColorLightGray,
-    .DateColor = GColorWindsorTan,
-    .HourDigitsColor = GColorYellow,
-    .MinutesHandColor = GColorYellow,
-    .MinuteHandShadowColor = GColorBlack,
-    .MajorTickColor = GColorYellow,
-    .MinimizedMajorTickColor = GColorYellow,
-    .MinorTickColor = GColorDarkGray,
-    .BatteryLineColor = GColorYellow,
-    .BTQTColor = GColorLightGray,
-    .LocalAlarmPinColor = GColorScreaminGreen,
-    .SyncedAlarmPinColor = GColorRichBrilliantLavender,
-    .CalendarPinColor = GColorCadetBlue,
-    .WatchDialWindowColor = GColorDarkGray,
-  },
-  {
-    .name = "bu",
-    .BackgroundColor1 = GColorDukeBlue,
-    .ComplicationBorderColor = GColorDukeBlue,
-    .ComplicationBackgroundColor = GColorDukeBlue,
-    .ComplicationShadowColor = GColorDukeBlue,
-    .DateColor = GColorWhite,
-    .HourDigitsColor = GColorYellow,
-    .MinutesHandColor = GColorYellow,
-    .MinuteHandShadowColor = GColorOxfordBlue,
-    .MajorTickColor = GColorYellow,
-    .MinimizedMajorTickColor = GColorYellow,
-    .MinorTickColor = GColorPictonBlue,
-    .BatteryLineColor = GColorRed,
-    .BTQTColor = GColorPictonBlue,
-    .LocalAlarmPinColor = GColorScreaminGreen,
-    .SyncedAlarmPinColor = GColorRichBrilliantLavender,
-    .CalendarPinColor = GColorCadetBlue,
-    .WatchDialWindowColor = GColorVeryLightBlue,
-  },
-  {
-    .name = "pl",
-    .BackgroundColor1 = GColorPurple,
-    .ComplicationBorderColor = GColorPurple,
-    .ComplicationBackgroundColor = GColorPurple,
-    .ComplicationShadowColor = GColorPurple,
-    .DateColor = GColorRichBrilliantLavender,
-    .HourDigitsColor = GColorRichBrilliantLavender,
-    .MinutesHandColor = GColorRichBrilliantLavender,
-    .MinuteHandShadowColor = GColorImperialPurple,
-    .MajorTickColor = GColorRichBrilliantLavender,
-    .MinorTickColor = GColorImperialPurple,
-    .MinimizedMajorTickColor = GColorImperialPurple,
-    .BatteryLineColor = GColorBulgarianRose,
-    .BTQTColor = GColorImperialPurple,
-    .LocalAlarmPinColor = GColorScreaminGreen,
-    .SyncedAlarmPinColor = GColorRichBrilliantLavender,
-    .CalendarPinColor = GColorCadetBlue,
-    .WatchDialWindowColor = GColorPastelYellow,
-  },
-  {
-    .name = "gr",
-    .BackgroundColor1 = GColorBlack,
-    .ComplicationBorderColor = GColorArmyGreen,
-    .ComplicationBackgroundColor = GColorBlack,
-    .ComplicationShadowColor = GColorMidnightGreen,
-    .DateColor = GColorGreen,
-    .HourDigitsColor = GColorBrightGreen,
-    .MinutesHandColor = GColorBrightGreen,
-    .MinuteHandShadowColor = GColorDarkGreen,
-    .MajorTickColor = GColorBrightGreen,
-    .MinorTickColor = GColorDarkGreen,
-    .MinimizedMajorTickColor = GColorBrightGreen,
-    .BatteryLineColor = GColorPastelYellow,
-    .BTQTColor = GColorDarkGreen,
-    .LocalAlarmPinColor = GColorScreaminGreen,
-    .SyncedAlarmPinColor = GColorRichBrilliantLavender,
-    .CalendarPinColor = GColorCadetBlue,
-    .WatchDialWindowColor = GColorMayGreen,
-  },
-  { .name = "" }
-};
-
 bool connected = true;
 
 //function prototypes
@@ -294,7 +189,6 @@ static void prv_default_settings(void) {
   settings.BTQTColor = GColorDarkGray;
   settings.showMajorTick = true;
   settings.showMinorTick = true;
-  snprintf(settings.ThemeSelect, sizeof(settings.ThemeSelect), "%s", "wh");
   snprintf(settings.PosLeft, sizeof(settings.PosLeft), "%s", "hr");
   snprintf(settings.PosRight, sizeof(settings.PosRight), "%s", "lo");
   snprintf(settings.PosTop, sizeof(settings.PosTop), "%s", "ap");
@@ -344,7 +238,6 @@ static void prv_load_settings(void) {
 // AppMessage inbox handler
 static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) {
   bool settings_changed = false;
-  bool theme_settings_changed = false;
 
   Tuple *vibe_t = dict_find(iter, MESSAGE_KEY_VibeOn);
   Tuple *enable_date_t = dict_find(iter, MESSAGE_KEY_EnableDate);
@@ -352,7 +245,6 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *enable_battery_line_t = dict_find(iter, MESSAGE_KEY_EnableBatteryLine);
   Tuple *enable_logo_t = dict_find(iter, MESSAGE_KEY_EnableLogo);
   Tuple *logotext_t = dict_find(iter, MESSAGE_KEY_LogoText);
-  Tuple *themeselect_t = dict_find(iter, MESSAGE_KEY_ThemeSelect);
   Tuple *bg_color1_t = dict_find(iter, MESSAGE_KEY_BackgroundColor1);
   Tuple *comp_border_color_t = dict_find(iter, MESSAGE_KEY_ComplicationBorderColor);
   Tuple *comp_background_color_t = dict_find(iter, MESSAGE_KEY_ComplicationBackgroundColor);
@@ -398,6 +290,11 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *show_watch_dial_window_t = dict_find(iter, MESSAGE_KEY_ShowWatchDialWindow);
   Tuple *watch_dial_window_color_t = dict_find(iter, MESSAGE_KEY_WatchDialWindowColor);
   Tuple *minimized_major_tick_color_t = dict_find(iter, MESSAGE_KEY_MinimizedMajorTickColor);
+
+  if (dict_find(iter, MESSAGE_KEY_XCLAYUserThemes)) {
+    // This is a potentially massive blob, and it should be filtered out
+    APP_LOG(APP_LOG_LEVEL_WARNING, "XCLAY message found.  This should not be sent to the watchface.");
+  }
 
   if (fg_shape_t) {
     settings.ForegroundShape = fg_shape_t->value->int32 == 1;
@@ -513,21 +410,20 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
       snprintf(settings.LogoText, sizeof(settings.LogoText), "%s", logotext_t->value->cstring);
     } else if (settings.EnableLogo && strlen(logotext_t->value->cstring) == 0) {
       // If the custom text field is blank but the logo is enabled, use the default text
-      snprintf(settings.LogoText, sizeof(settings.LogoText), "%s", "monologue");
+      snprintf(settings.LogoText, sizeof(settings.LogoText), "%s", "pebble");
     }
     else {
       snprintf(settings.LogoText, sizeof(settings.LogoText), "%s", "");
     }
 
     layer_mark_dirty(s_date_battery_logo_layer);
-
   }
 
   if (enable_battery_t) {
     settings.EnableBattery = enable_battery_t->value->int32 == 1;
     layer_mark_dirty(s_canvas_battery);
     layer_mark_dirty(s_date_battery_logo_layer);
-    }
+  }
 
   if (enable_battery_line_t) {
     settings.EnableBatteryLine = enable_battery_line_t->value->int32 == 1;
@@ -610,136 +506,89 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     settings_changed = true;
   }
 
-/////////////////////////////////////
-  if (themeselect_t) {
-    APP_LOG(APP_LOG_LEVEL_INFO, "Theme selected: '%s'", themeselect_t->value->cstring);
+  /////////////////////////////////////
+  // Set the colors for the watchface
+  if (bg_color1_t) {
+    settings.BackgroundColor1 = GColorFromHEX(bg_color1_t->value->int32);
+    settings_changed = true;
+  }
 
-    if (strcmp(themeselect_t->value->cstring, "cu") == 0) {
-      // Set the theme for "cu" and handle custom colors
-      if (bg_color1_t) {
-        settings.BackgroundColor1 = GColorFromHEX(bg_color1_t->value->int32);
-        settings_changed = true;
-      }
+  if (comp_border_color_t) {
+    settings.ComplicationBorderColor = GColorFromHEX(comp_border_color_t->value->int32);
+    settings_changed = true;
+  }
 
-      if (comp_border_color_t) {
-        settings.ComplicationBorderColor = GColorFromHEX(comp_border_color_t->value->int32);
-        settings_changed = true;
-      }
+  if (comp_background_color_t) {
+    settings.ComplicationBackgroundColor = GColorFromHEX(comp_background_color_t->value->int32);
+    settings_changed = true;
+  }
 
-      if (comp_background_color_t) {
-        settings.ComplicationBackgroundColor = GColorFromHEX(comp_background_color_t->value->int32);
-        settings_changed = true;
-      }
+  if (comp_shadow_color_t) {
+    settings.ComplicationShadowColor = GColorFromHEX(comp_shadow_color_t->value->int32);
+    settings_changed = true;
+  }
 
-      if (comp_shadow_color_t) {
-        settings.ComplicationShadowColor = GColorFromHEX(comp_shadow_color_t->value->int32);
-        settings_changed = true;
-      }
+  if (shadowon_t) {
+    settings.ShadowOn = shadowon_t->value->int32 == 1;
 
-      if (shadowon_t) {
-        settings.ShadowOn = shadowon_t->value->int32 == 1;
-
-          if(settings.ShadowOn){
-            if (bg_color2_t) {
-              settings.MinuteHandShadowColor = GColorFromHEX(bg_color2_t->value->int32);
-              settings_changed = true;
-            }
-          }
-          else {
-          settings.MinuteHandShadowColor = settings.BackgroundColor1;
-          }
-      }
-
-      if (text_color2_t) {
-        settings.MinorTickColor = GColorFromHEX(text_color2_t->value->int32);
-        layer_mark_dirty(s_bg_layer);
-      }
-
-      if (date_color_t) {
-        settings.DateColor = GColorFromHEX(date_color_t->value->int32);
-        layer_mark_dirty(s_canvas_layer);
-        layer_mark_dirty(s_date_battery_logo_layer);
-      }
-      if (hours_color_t) {
-        settings.HourDigitsColor = GColorFromHEX(hours_color_t->value->int32);
-        layer_mark_dirty(s_canvas_layer);
-        // layer_mark_dirty(s_canvas_second_hand);
-      }
-
-      if (minutes_color_t) {
-        settings.MinutesHandColor = GColorFromHEX(minutes_color_t->value->int32);
-        layer_mark_dirty(s_canvas_layer);
-      //  layer_mark_dirty(s_canvas_second_hand);
-        layer_mark_dirty(s_date_battery_logo_layer);
-      }
-
-      if (tick_color_t) {
-        settings.MajorTickColor = GColorFromHEX(tick_color_t->value->int32);
-        layer_mark_dirty(s_canvas_layer);
-        layer_mark_dirty(s_date_battery_logo_layer);
-      }
-
-      if (minimized_major_tick_color_t) {
-        settings.MinimizedMajorTickColor = GColorFromHEX(minimized_major_tick_color_t->value->int32);
-        layer_mark_dirty(s_canvas_layer);
-        layer_mark_dirty(s_date_battery_logo_layer);
-      }
-
-      if (battery_line_color_t) {
-        settings.BatteryLineColor = GColorFromHEX(battery_line_color_t->value->int32);
-        layer_mark_dirty(s_canvas_battery);
-      }
-      if (btqt_color_t) {
-        settings.BTQTColor = GColorFromHEX(btqt_color_t->value->int32);
-        layer_mark_dirty(s_date_battery_logo_layer);
-      }
-      theme_settings_changed = true;
-    //    APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme custom selected");
-    } else {
-      for (ThemePreset *theme = prv_themes; theme->name[0]; theme++) {
-        if (themeselect_t && strcmp(themeselect_t->value->cstring, theme->name) != 0)
-          continue;
-
-        APP_LOG(APP_LOG_LEVEL_INFO, "Theme found: '%s'", theme->name);
-        if (shadowon_t) {
-          settings.ShadowOn = shadowon_t->value->int32 == 1;
+      if(settings.ShadowOn){
+        if (bg_color2_t) {
+          settings.MinuteHandShadowColor = GColorFromHEX(bg_color2_t->value->int32);
+          settings_changed = true;
         }
-
-        if (settings.ShadowOn) {
-          settings.MinuteHandShadowColor = theme->MinuteHandShadowColor;
-        } else {
-          settings.MinuteHandShadowColor = theme->BackgroundColor1;
-        }
-        settings.BackgroundColor1 = theme->BackgroundColor1;
-        settings.ComplicationBackgroundColor = theme->ComplicationBorderColor;
-        settings.ComplicationBackgroundColor = theme->ComplicationBackgroundColor;
-        settings.ComplicationShadowColor = theme->ComplicationShadowColor;
-        settings.MinorTickColor = theme->MinorTickColor;
-        settings.DateColor = theme->DateColor;
-        settings.HourDigitsColor = theme->HourDigitsColor;
-        settings.MinutesHandColor = theme->MinutesHandColor;
-        settings.MinuteHandShadowColor = theme->MinuteHandShadowColor;
-        settings.MajorTickColor = theme->MajorTickColor;
-        settings.MinimizedMajorTickColor = theme->MinimizedMajorTickColor;
-        settings.MinorTickColor = theme->MinorTickColor;
-        settings.BatteryLineColor = theme->BatteryLineColor;
-        settings.BTQTColor = theme->BTQTColor;
-        settings.LocalAlarmPinColor = theme->LocalAlarmPinColor;
-        settings.SyncedAlarmPinColor = theme->SyncedAlarmPinColor;
-        settings.CalendarPinColor = theme->CalendarPinColor;
-        settings.WatchDialWindowColor = theme->WatchDialWindowColor;
-        theme_settings_changed = true;
-        break;
       }
+      else {
+      settings.MinuteHandShadowColor = settings.BackgroundColor1;
+      }
+  }
 
-      if (!theme_settings_changed)
-        APP_LOG(APP_LOG_LEVEL_INFO, "Theme not found: '%s'", themeselect_t->value->cstring);
-    }
+  if (text_color2_t) {
+    settings.MinorTickColor = GColorFromHEX(text_color2_t->value->int32);
+    layer_mark_dirty(s_bg_layer);
+  }
+
+  if (date_color_t) {
+    settings.DateColor = GColorFromHEX(date_color_t->value->int32);
+    layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
+  if (hours_color_t) {
+    settings.HourDigitsColor = GColorFromHEX(hours_color_t->value->int32);
+    layer_mark_dirty(s_canvas_layer);
+    // layer_mark_dirty(s_canvas_second_hand);
+  }
+
+  if (minutes_color_t) {
+    settings.MinutesHandColor = GColorFromHEX(minutes_color_t->value->int32);
+    layer_mark_dirty(s_canvas_layer);
+  //  layer_mark_dirty(s_canvas_second_hand);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
+
+  if (tick_color_t) {
+    settings.MajorTickColor = GColorFromHEX(tick_color_t->value->int32);
+    layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
+
+  if (minimized_major_tick_color_t) {
+    settings.MinimizedMajorTickColor = GColorFromHEX(minimized_major_tick_color_t->value->int32);
+    layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
+
+  if (battery_line_color_t) {
+    settings.BatteryLineColor = GColorFromHEX(battery_line_color_t->value->int32);
+    layer_mark_dirty(s_canvas_battery);
+  }
+  if (btqt_color_t) {
+    settings.BTQTColor = GColorFromHEX(btqt_color_t->value->int32);
+    layer_mark_dirty(s_date_battery_logo_layer);
   }
 
   ///////////////////////////////
 
-  if (settings_changed || theme_settings_changed) {
+  if (settings_changed) {
     layer_mark_dirty(s_bg_layer);
     layer_mark_dirty(s_canvas_layer);
     layer_mark_dirty(s_date_battery_logo_layer);
@@ -871,8 +720,6 @@ static void draw_line_hand(GContext *ctx, int angle, int length, int back_length
   graphics_fill_circle(ctx, origin_back, settings.BackSize);
 
 }
-
-
 
 static void draw_hand_center(GContext *ctx, GColor outer_color, GColor inner_color) {
   if (settings.CentreSize == 0 && settings.InnerCentreSize == 0)
