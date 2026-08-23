@@ -51,7 +51,7 @@ module.exports = [
         "label": "Orbiting Watch Dial Window",
         "messageKey": "ShowWatchDialWindow",
         "description": "Window that follows the minute hand and reveals the dial ticks underneath. Only enabled with round watchface and orbiting complications.",
-        "defaultValue": false
+        "defaultValue": true
       },
       {
         "type": "toggle",

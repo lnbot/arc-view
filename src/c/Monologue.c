@@ -219,7 +219,7 @@ static void prv_default_settings(void) {
   settings.CalendarPinColor = GColorVividCerulean;
   settings.TimelineAlarmPin = false;
   settings.TimelineTimerPin = false;
-  settings.ShowWatchDialWindow = false;
+  settings.ShowWatchDialWindow = true;
   settings.WatchDialWindowColor = GColorWhite;
   settings.BlankFaceMode = false;
   settings.QuietTimeBlankFace = false;
@@ -480,7 +480,8 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     }
     tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
 #elif defined(SUB_MINUTE_USE_TICK)
-    tick_timer_service_subscribe(settings.SmoothMinuteHand ? SECOND_UNIT : MINUTE_UNIT, tick_handler);
+    tick_timer_service_subscribe((use_minute_hand() && settings.SmoothMinuteHand) ?
+      SECOND_UNIT : MINUTE_UNIT, tick_handler);
 #endif
 
     layer_mark_dirty(s_bg_layer);
@@ -912,29 +913,28 @@ static void draw_major_tick (GContext *ctx, int angle_native, int length, GColor
 
 static void draw_minor_tick(GContext *ctx, int angle_native, GColor border_color) {
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
-      GPoint p1;
-      GPoint p2;
+  GPoint p1;
+  GPoint p2;
 
-      #ifdef PBL_ROUND
-          // The tick starts away from the center of the watch face.
-          p1 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 - 8);
-          // The tick ends closer to the edge.
-          p2 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 );
-      #else
-        if(settings.ForegroundShape){
-            p1 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 - 8);
-            p2 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 );
-          }
-          else{
-            GRect r = GRect(0, 0, bounds.size.w, bounds.size.h);
-            GPoint edge = angle_to_rect_edge_native(origin, angle_native, r);
-            int32_t dx = cos_lookup(angle_native);
-            int32_t dy = sin_lookup(angle_native);
-            p2 = GPoint(edge.x - (int)((dx * config.tick_inset_outer) / TRIG_MAX_ANGLE),
-                              edge.y - (int)((dy * config.tick_inset_outer) / TRIG_MAX_ANGLE));
-            p1 = angle_to_rounded_rect_edge_native(origin, angle_native, config.minortickrect_w, config.minortickrect_h, config.corner_radius_minortickrect);
-          }
-      #endif
+  #ifdef PBL_ROUND
+    // The tick starts away from the center of the watch face.
+    p1 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 - 8);
+    // The tick ends closer to the edge.
+    p2 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 );
+  #else
+    if (settings.ForegroundShape) {
+      p1 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 - 8);
+      p2 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 );
+    } else {
+      GRect r = GRect(0, 0, bounds.size.w, bounds.size.h);
+      GPoint edge = angle_to_rect_edge_native(origin, angle_native, r);
+      int32_t dx = cos_lookup(angle_native);
+      int32_t dy = sin_lookup(angle_native);
+      p2 = GPoint(edge.x - (int)((dx * config.tick_inset_outer) / TRIG_MAX_ANGLE),
+                        edge.y - (int)((dy * config.tick_inset_outer) / TRIG_MAX_ANGLE));
+      p1 = angle_to_rounded_rect_edge_native(origin, angle_native, config.minortickrect_w, config.minortickrect_h, config.corner_radius_minortickrect);
+    }
+  #endif
 
   graphics_context_set_antialiased(ctx, true);
   graphics_context_set_stroke_color(ctx, border_color);
@@ -1460,7 +1460,9 @@ static void prv_window_load(Window *window) {
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
 
 #elif defined (SUB_MINUTE_USE_TICK)
-  tick_timer_service_subscribe(settings.SmoothMinuteHand ? SECOND_UNIT : MINUTE_UNIT, tick_handler);
+  // Watchface is restarted when quiet time toggles so this is sufficient for QTBlankFace
+  tick_timer_service_subscribe((use_minute_hand() && settings.SmoothMinuteHand) ?
+    SECOND_UNIT : MINUTE_UNIT, tick_handler);
 #endif
 
   //create layers
