@@ -4,7 +4,7 @@
 #include "utils/storage_utils.h"
 #include "utils/weekday.h"
 #include "utils/MathUtils.h"
-#include "message_keys.auto.h"
+#include "message_keys.enum.h"
 #include "src/resource_ids.auto.h"
 #include <pebble-fctx/fctx.h>
 #include <pebble-fctx/fpath.h>
@@ -137,7 +137,7 @@ static void prv_save_settings(void);
 static void prv_default_settings(void);
 static void prv_load_settings(void);
 static bool prv_restore_from_settings_dict(void);
-static void prv_parse_settings_dict(DictionaryIterator* iter);
+static bool prv_parse_settings_dict(DictionaryIterator* iter);
 static void prv_inbox_received_handler(DictionaryIterator *iter, void *context);
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed);
 #if defined(SUB_MINUTE_USE_APPTIMER)
@@ -293,135 +293,239 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   prv_parse_settings_dict(iter);
 
   size_t size = (char *)iter->end - (char *)iter->dictionary;
+  persist_write_data(SETTINGS_DICT_SIZE_KEY, &size, sizeof(size));
   persist_write_data_multi(SETTINGS_DICT_KEY, iter->dictionary, size, SETTINGS_DICT_MAX_BLOCKS);
   //APP_LOG(APP_LOG_LEVEL_INFO, "Write settings dict size=%u", size);
 }
 
 static bool prv_restore_from_settings_dict() {
-  PersistDictionary *pd = NULL;
+  uint8_t *dictbytes = NULL;
   bool ret = false;
   size_t size;
 
-  if (persist_read_data_multi(SETTINGS_DICT_KEY, &size, sizeof(size), SETTINGS_DICT_MAX_BLOCKS) != sizeof(size)) {
+  if (persist_read_data(SETTINGS_DICT_SIZE_KEY, &size, sizeof(size)) != sizeof(size)) {
     APP_LOG(APP_LOG_LEVEL_INFO, "Settings dict not in persistent storage");
     goto cleanup;
   }
 
-  pd = (PersistDictionary *)(size);
-  if (pd == NULL) {
+  dictbytes = (uint8_t *)malloc(size);
+  if (dictbytes == NULL) {
     APP_LOG(APP_LOG_LEVEL_INFO, "Settings dict malloc() failed");
     goto cleanup;
   }
 
+  size_t readsize = persist_read_data_multi(SETTINGS_DICT_KEY, dictbytes, size, SETTINGS_DICT_MAX_BLOCKS);
+  if (readsize != size) {
+    APP_LOG(APP_LOG_LEVEL_INFO, "Settings dict read failed (readsize %d != expected %d)", readsize, size);
+    goto cleanup;
+  }
+
   DictionaryIterator iter;
-  dict_read_begin_from_buffer(&iter, pd->dictionary, pd->size - sizeof(size));
-  prv_parse_settings_dict(&iter);
+  dict_read_begin_from_buffer(&iter, dictbytes, size);
+  ret = prv_parse_settings_dict(&iter);
 
 cleanup:
-  if (pd == NULL)
-    free(pd);
+  if (dictbytes == NULL)
+    free(dictbytes);
   return ret;
 }
 
-static void prv_parse_settings_dict(DictionaryIterator *iter) {
+static bool prv_parse_settings_dict(DictionaryIterator *iter) {
   //APP_LOG(APP_LOG_LEVEL_INFO, "ParseSettingsDict: Dict size=%u", (char *)iter->end - (char *)iter->dictionary);
   bool settings_changed = false;
 
-  Tuple *vibe_t = dict_find(iter, MESSAGE_KEY_VibeOn);
-  Tuple *enable_date_t = dict_find(iter, MESSAGE_KEY_EnableDate);
-  Tuple *enable_battery_t = dict_find(iter, MESSAGE_KEY_EnableBattery);
-  Tuple *enable_battery_line_t = dict_find(iter, MESSAGE_KEY_EnableBatteryLine);
-  Tuple *enable_logo_t = dict_find(iter, MESSAGE_KEY_EnableLogo);
-  Tuple *logotext_t = dict_find(iter, MESSAGE_KEY_LogoText);
-  Tuple *bg_color_t = dict_find(iter, MESSAGE_KEY_BackgroundColor);
-  Tuple *comp_border_color_t = dict_find(iter, MESSAGE_KEY_ComplicationBorderColor);
-  Tuple *comp_background_color_t = dict_find(iter, MESSAGE_KEY_ComplicationBackgroundColor);
-  Tuple *comp_shadow_color_t = dict_find(iter, MESSAGE_KEY_ComplicationShadowColor);
-  Tuple *bg_color2_t = dict_find(iter, MESSAGE_KEY_MinuteHandShadowColor);
-  Tuple *text_color2_t = dict_find(iter, MESSAGE_KEY_MinorTickColor);
-  Tuple *date_color_t = dict_find(iter, MESSAGE_KEY_DateColor);
-  Tuple *hours_digits_color_t = dict_find(iter, MESSAGE_KEY_HourDigitsColor);
-  Tuple *minute_digits_color_t = dict_find(iter, MESSAGE_KEY_MinuteDigitsColor);
-  Tuple *minutes_hand_color_t = dict_find(iter, MESSAGE_KEY_MinutesHandColor);
-  Tuple *hour_hand_color_t = dict_find(iter, MESSAGE_KEY_HourHandColor);
-  Tuple *tick_color_t = dict_find(iter, MESSAGE_KEY_MajorTickColor);
-  Tuple *battery_line_color_t = dict_find(iter, MESSAGE_KEY_BatteryLineColor);
-  Tuple *btqt_color_t = dict_find(iter, MESSAGE_KEY_BTQTColor);
-  Tuple *shadowon_t = dict_find(iter, MESSAGE_KEY_ShadowOn);
-  Tuple *addzero12_t = dict_find(iter, MESSAGE_KEY_AddZero12h);
-  Tuple *remzero24_t = dict_find(iter, MESSAGE_KEY_RemoveZero24h);
-  Tuple *posleft_t = dict_find(iter, MESSAGE_KEY_PosLeft);
-  Tuple *posright_t = dict_find(iter, MESSAGE_KEY_PosRight);
-  Tuple *postop_t = dict_find(iter, MESSAGE_KEY_PosTop);
-  Tuple *posbottom_t = dict_find(iter, MESSAGE_KEY_PosBottom);
-  Tuple *majort_t = dict_find(iter, MESSAGE_KEY_showMajorTick);
-  Tuple *minort_t = dict_find(iter, MESSAGE_KEY_showMinorTick);
-  Tuple *fg_shape_t = dict_find(iter, MESSAGE_KEY_ForegroundShape);
-  Tuple *dig_t = dict_find(iter,MESSAGE_KEY_DigitalHour);
-  Tuple *hand_t = dict_find(iter, MESSAGE_KEY_HandThickness);
-  Tuple *ocent_t = dict_find(iter, MESSAGE_KEY_CentreSize);
-  Tuple *icent_t = dict_find(iter, MESSAGE_KEY_InnerCentreSize);
-  Tuple *back_t = dict_find(iter, MESSAGE_KEY_BackSize);
-  Tuple *backlen_t = dict_find(iter, MESSAGE_KEY_BackLen);
-  Tuple *complication_font_size_adj_t = dict_find(iter, MESSAGE_KEY_ComplicationFontSizeAdj);
-  Tuple *minute_hand_updates_per_min_t = dict_find(iter, MESSAGE_KEY_MinuteHandUpdatesPerMin);
-  Tuple *orbit_complications_t = dict_find(iter, MESSAGE_KEY_OrbitComplications);
-  Tuple *enable_alarm_calendar_sync_t = dict_find(iter, MESSAGE_KEY_EnableAlarmCalendarSync);
-  Tuple *local_alarm_pin_color_t = dict_find(iter, MESSAGE_KEY_LocalAlarmPinColor);
-  Tuple *synced_alarm_pin_color_t = dict_find(iter, MESSAGE_KEY_SyncedAlarmPinColor);
-  Tuple *calendar_pin_color_t = dict_find(iter, MESSAGE_KEY_CalendarPinColor);
-  Tuple *timeline_alarm_pin_t = dict_find(iter, MESSAGE_KEY_TimelineAlarmPin);
-  Tuple *timeline_timer_pin_t = dict_find(iter, MESSAGE_KEY_TimelineTimerPin);
-  Tuple *show_watch_dial_window_t = dict_find(iter, MESSAGE_KEY_ShowWatchDialWindow);
-  Tuple *watch_dial_window_color_t = dict_find(iter, MESSAGE_KEY_WatchDialWindowColor);
-  Tuple *minimized_major_tick_color_t = dict_find(iter, MESSAGE_KEY_MinimizedMajorTickColor);
-  Tuple *blank_face_t = dict_find(iter,MESSAGE_KEY_BlankFaceMode);
-  Tuple *qt_blank_face_t = dict_find(iter,MESSAGE_KEY_QuietTimeBlankFace);
+  // Tuples whose settings depend on more than one value in the dict, so they
+  // are stashed here and processed once the iteration has completed.
+  Tuple *enable_logo_t = NULL;
+  Tuple *logotext_t = NULL;
+  Tuple *minute_hand_updates_per_min_t = NULL;
+  Tuple *shadow_on_t = NULL;
+  Tuple *minute_hand_shadow_t = NULL;
+  Tuple *show_watch_dial_window_t = NULL;
 
-  bool oldUseMinuteHand = use_minute_hand();
+  // Read each Dictionary Tuple once and dispatch by its Message Key to the
+  // parsing code below.  Settings that can be computed from a single Tuple
+  // are written straight into their settings member.
+  Tuple *tuple = dict_read_first(iter);
+  while (tuple) {
+    switch (tuple->key) {
+      case EMSGKEY_XCLAYUserThemes:
+        // This is a potentially massive blob, and it should be filtered out
+        APP_LOG(APP_LOG_LEVEL_WARNING, "XCLAY message found.  This should not be sent to the watchface.");
+        break;
 
-  if (dict_find(iter, MESSAGE_KEY_XCLAYUserThemes)) {
-    // This is a potentially massive blob, and it should be filtered out
-    APP_LOG(APP_LOG_LEVEL_WARNING, "XCLAY message found.  This should not be sent to the watchface.");
+      // Settings that need more than one tuple are saved for after the loop.
+      case EMSGKEY_EnableLogo:
+        enable_logo_t = tuple;
+        break;
+      case EMSGKEY_LogoText:
+        logotext_t = tuple;
+        break;
+      case EMSGKEY_MinuteHandUpdatesPerMin:
+        minute_hand_updates_per_min_t = tuple;
+        break;
+      case EMSGKEY_ShadowOn:
+        shadow_on_t = tuple;
+        break;
+      case EMSGKEY_MinuteHandShadowColor:
+        minute_hand_shadow_t = tuple;
+        break;
+      case EMSGKEY_ShowWatchDialWindow:
+        show_watch_dial_window_t = tuple;
+        break;
+
+      // Alarm / timeline sync settings.
+      case EMSGKEY_EnableAlarmCalendarSync:
+        settings.EnableAlarmCalendarSync = tuple->value->int32 == 1;
+        alarm_calendar_sync_set_enabled(settings.EnableAlarmCalendarSync);
+        break;
+      case EMSGKEY_TimelineAlarmPin:
+        settings.TimelineAlarmPin = tuple->value->int32 == 1;
+        alarm_calendar_sync_set_alarm_pin(settings.TimelineAlarmPin);
+        break;
+      case EMSGKEY_TimelineTimerPin:
+        settings.TimelineTimerPin = tuple->value->int32 == 1;
+        alarm_calendar_sync_set_timer_pin(settings.TimelineTimerPin);
+        break;
+
+      // Boolean toggles.
+      case EMSGKEY_VibeOn:
+        settings_changed |= prv_set_bool(tuple, &settings.VibeOn);
+        break;
+      case EMSGKEY_EnableDate:
+        settings_changed |= prv_set_bool(tuple, &settings.EnableDate);
+        break;
+      case EMSGKEY_EnableBattery:
+        settings_changed |= prv_set_bool(tuple, &settings.EnableBattery);
+        break;
+      case EMSGKEY_EnableBatteryLine:
+        settings_changed |= prv_set_bool(tuple, &settings.EnableBatteryLine);
+        break;
+      case EMSGKEY_showMajorTick:
+        settings_changed |= prv_set_bool(tuple, &settings.showMajorTick);
+        break;
+      case EMSGKEY_showMinorTick:
+        settings_changed |= prv_set_bool(tuple, &settings.showMinorTick);
+        break;
+      case EMSGKEY_ForegroundShape:
+        settings_changed |= prv_set_bool(tuple, &settings.ForegroundShape);
+        break;
+      case EMSGKEY_DigitalHour:
+        settings_changed |= prv_set_bool(tuple, &settings.DigitalHour);
+        break;
+      case EMSGKEY_OrbitComplications:
+        settings_changed |= prv_set_bool(tuple, &settings.OrbitComplications);
+        break;
+      case EMSGKEY_AddZero12h:
+        settings_changed |= prv_set_bool(tuple, &settings.AddZero12h);
+        break;
+      case EMSGKEY_RemoveZero24h:
+        settings_changed |= prv_set_bool(tuple, &settings.RemoveZero24h);
+        break;
+      case EMSGKEY_BlankFaceMode:
+        settings_changed |= prv_set_bool(tuple, &settings.BlankFaceMode);
+        break;
+      case EMSGKEY_QuietTimeBlankFace:
+        settings_changed |= prv_set_bool(tuple, &settings.QuietTimeBlankFace);
+        break;
+
+      // Integer settings.
+      case EMSGKEY_CentreSize:
+        settings_changed |= prv_set_int32(tuple, &settings.CentreSize);
+        break;
+      case EMSGKEY_InnerCentreSize:
+        settings_changed |= prv_set_int32(tuple, &settings.InnerCentreSize);
+        break;
+      case EMSGKEY_HandThickness:
+        settings_changed |= prv_set_int32(tuple, &settings.HandThickness);
+        break;
+      case EMSGKEY_BackSize:
+        settings_changed |= prv_set_int32(tuple, &settings.BackSize);
+        break;
+      case EMSGKEY_BackLen:
+        settings_changed |= prv_set_int32(tuple, &settings.BackLen);
+        break;
+      case EMSGKEY_ComplicationFontSizeAdj:
+        settings_changed |= prv_set_int32(tuple, &settings.ComplicationFontSizeAdj);
+        break;
+
+      // String positions.
+      case EMSGKEY_PosLeft:
+        settings_changed |= snprintf(settings.PosLeft, sizeof(settings.PosLeft), "%s", tuple->value->cstring);
+        break;
+      case EMSGKEY_PosRight:
+        settings_changed |= snprintf(settings.PosRight, sizeof(settings.PosRight), "%s", tuple->value->cstring);
+        break;
+      case EMSGKEY_PosTop:
+        settings_changed |= snprintf(settings.PosTop, sizeof(settings.PosTop), "%s", tuple->value->cstring);
+        break;
+      case EMSGKEY_PosBottom:
+        settings_changed |= snprintf(settings.PosBottom, sizeof(settings.PosBottom), "%s", tuple->value->cstring);
+        break;
+
+      // Color settings.
+      case EMSGKEY_BackgroundColor:
+        settings_changed |= prv_set_color(tuple, &settings.BackgroundColor);
+        break;
+      case EMSGKEY_ComplicationBorderColor:
+        settings_changed |= prv_set_color(tuple, &settings.ComplicationBorderColor);
+        break;
+      case EMSGKEY_ComplicationBackgroundColor:
+        settings_changed |= prv_set_color(tuple, &settings.ComplicationBackgroundColor);
+        break;
+      case EMSGKEY_ComplicationShadowColor:
+        settings_changed |= prv_set_color(tuple, &settings.ComplicationShadowColor);
+        break;
+      case EMSGKEY_MinorTickColor:
+        settings_changed |= prv_set_color(tuple, &settings.MinorTickColor);
+        break;
+      case EMSGKEY_DateColor:
+        settings_changed |= prv_set_color(tuple, &settings.DateColor);
+        break;
+      case EMSGKEY_HourDigitsColor:
+        settings_changed |= prv_set_color(tuple, &settings.HourDigitsColor);
+        break;
+      case EMSGKEY_MinuteDigitsColor:
+        settings_changed |= prv_set_color(tuple, &settings.MinuteDigitsColor);
+        break;
+      case EMSGKEY_MinutesHandColor:
+        settings_changed |= prv_set_color(tuple, &settings.MinutesHandColor);
+        break;
+      case EMSGKEY_HourHandColor:
+        settings_changed |= prv_set_color(tuple, &settings.HourHandColor);
+        break;
+      case EMSGKEY_MajorTickColor:
+        settings_changed |= prv_set_color(tuple, &settings.MajorTickColor);
+        break;
+      case EMSGKEY_MinimizedMajorTickColor:
+        settings_changed |= prv_set_color(tuple, &settings.MinimizedMajorTickColor);
+        break;
+      case EMSGKEY_BatteryLineColor:
+        settings_changed |= prv_set_color(tuple, &settings.BatteryLineColor);
+        break;
+      case EMSGKEY_BTQTColor:
+        settings_changed |= prv_set_color(tuple, &settings.BTQTColor);
+        break;
+      case EMSGKEY_WatchDialWindowColor:
+        settings_changed |= prv_set_color(tuple, &settings.WatchDialWindowColor);
+        break;
+      case EMSGKEY_LocalAlarmPinColor:
+        settings_changed |= prv_set_color(tuple, &settings.LocalAlarmPinColor);
+        break;
+      case EMSGKEY_SyncedAlarmPinColor:
+        settings_changed |= prv_set_color(tuple, &settings.SyncedAlarmPinColor);
+        break;
+      case EMSGKEY_CalendarPinColor:
+        settings_changed |= prv_set_color(tuple, &settings.CalendarPinColor);
+        break;
+
+      default:
+        break;
+    }
+    tuple = dict_read_next(iter);
   }
 
-  settings_changed |= prv_set_bool(fg_shape_t, &settings.ForegroundShape);
-  settings_changed |= prv_set_bool(dig_t, &settings.DigitalHour);
-  settings_changed |= prv_set_bool(qt_blank_face_t, &settings.QuietTimeBlankFace);
-  settings_changed |= prv_set_bool(blank_face_t, &settings.BlankFaceMode);
-  settings_changed |= prv_set_int32(ocent_t, (int*)&settings.CentreSize);
-  settings_changed |= prv_set_int32(icent_t, &settings.InnerCentreSize);
-  settings_changed |= prv_set_int32(hand_t, &settings.HandThickness);
-  settings_changed |= prv_set_int32(back_t, &settings.BackSize);
-  settings_changed |= prv_set_int32(backlen_t, &settings.BackLen);
-  settings_changed |= prv_set_bool(majort_t, &settings.showMajorTick);
-  settings_changed |= prv_set_bool(minort_t, &settings.showMinorTick);
-
-  if(posleft_t){
-    snprintf(settings.PosLeft, sizeof(settings.PosLeft), "%s", posleft_t -> value -> cstring);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if(posright_t){
-    snprintf(settings.PosRight, sizeof(settings.PosRight), "%s", posright_t -> value -> cstring);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if(postop_t){
-    snprintf(settings.PosTop, sizeof(settings.PosTop), "%s", postop_t -> value -> cstring);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if(posbottom_t){
-    snprintf(settings.PosBottom, sizeof(settings.PosBottom), "%s", posbottom_t -> value -> cstring);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  settings_changed |= prv_set_bool(vibe_t, &settings.VibeOn);
-  settings_changed |= prv_set_bool(addzero12_t, &settings.AddZero12h);
-  settings_changed |= prv_set_bool(remzero24_t, &settings.RemoveZero24h);
-  settings_changed |= prv_set_bool(enable_date_t, &settings.EnableDate);
-
+  // Settings that combine values from more than one Tuple.
   if (enable_logo_t) {
     settings.EnableLogo = enable_logo_t->value->int32 == 1;
 
@@ -432,17 +536,12 @@ static void prv_parse_settings_dict(DictionaryIterator *iter) {
     } else if (settings.EnableLogo && strlen(logotext_t->value->cstring) == 0) {
       // If the custom text field is blank but the logo is enabled, use the default text
       snprintf(settings.LogoText, sizeof(settings.LogoText), "%s", "pebble");
-    }
-    else {
+    } else {
       snprintf(settings.LogoText, sizeof(settings.LogoText), "%s", "");
     }
 
     settings_changed = true;
   }
-
-  settings_changed |= prv_set_bool(enable_battery_t, &settings.EnableBattery);
-  settings_changed |= prv_set_bool(enable_battery_line_t, &settings.EnableBatteryLine);
-  settings_changed |= prv_set_int32(complication_font_size_adj_t, &settings.ComplicationFontSizeAdj);
 
   if (minute_hand_updates_per_min_t) {
     int updates = minute_hand_updates_per_min_t->value->int32;
@@ -462,71 +561,26 @@ static void prv_parse_settings_dict(DictionaryIterator *iter) {
     settings_changed = true;
   }
 
-  settings_changed |= prv_set_bool(orbit_complications_t, &settings.OrbitComplications);
+  if (shadow_on_t) {
+    settings.ShadowOn = shadow_on_t->value->int32 == 1;
 
-  if (enable_alarm_calendar_sync_t) {
-    settings.EnableAlarmCalendarSync = enable_alarm_calendar_sync_t->value->int32 == 1;
-    alarm_calendar_sync_set_enabled(settings.EnableAlarmCalendarSync);
+    if (settings.ShadowOn) {
+      settings_changed |= prv_set_color(minute_hand_shadow_t, &settings.MinuteHandShadowColor);
+    } else {
+      settings.MinuteHandShadowColor = settings.BackgroundColor;
+    }
   }
-
-  if (timeline_alarm_pin_t) {
-    settings.TimelineAlarmPin = timeline_alarm_pin_t->value->int32 == 1;
-    alarm_calendar_sync_set_alarm_pin(settings.TimelineAlarmPin);
-  }
-
-  if (timeline_timer_pin_t) {
-    settings.TimelineTimerPin = timeline_timer_pin_t->value->int32 == 1;
-    alarm_calendar_sync_set_timer_pin(settings.TimelineTimerPin);
-  }
-
-  settings_changed |= prv_set_color(local_alarm_pin_color_t, &settings.LocalAlarmPinColor);
-  settings_changed |= prv_set_color(synced_alarm_pin_color_t, &settings.SyncedAlarmPinColor);
-  settings_changed |= prv_set_color(calendar_pin_color_t, &settings.CalendarPinColor);
 
   if (show_watch_dial_window_t) {
     settings.ShowWatchDialWindow = (show_watch_dial_window_t->value->int32 == 1) && settings.OrbitComplications;
-    #ifdef PBL_RECT
+#ifdef PBL_RECT
     settings.ShowWatchDialWindow = settings.ShowWatchDialWindow && settings.ForegroundShape;
-    #endif
+#endif
     settings_changed = true;
   }
 
-  settings_changed |= prv_set_color(watch_dial_window_color_t, &settings.WatchDialWindowColor);
-
-  // Force the hand to switch between hours and minutes
-  if (oldUseMinuteHand != use_minute_hand())
-    hand_angle_native = calculate_hand_angle(prv_tick_time);
-
-  /////////////////////////////////////
-  // Set the colors for the watchface
-  settings_changed |= prv_set_color(bg_color_t, &settings.BackgroundColor);
-  settings_changed |= prv_set_color(comp_border_color_t, &settings.ComplicationBorderColor);
-  settings_changed |= prv_set_color(comp_background_color_t, &settings.ComplicationBackgroundColor);
-  settings_changed |= prv_set_color(comp_shadow_color_t, &settings.ComplicationShadowColor);
-
-  if (shadowon_t) {
-    settings.ShadowOn = shadowon_t->value->int32 == 1;
-
-      if(settings.ShadowOn){
-        settings_changed |= prv_set_color(bg_color2_t, &settings.MinuteHandShadowColor);
-      }
-      else {
-      settings.MinuteHandShadowColor = settings.BackgroundColor;
-      }
-  }
-
-  settings_changed |= prv_set_color(text_color2_t, &settings.MinorTickColor);
-  settings_changed |= prv_set_color(date_color_t, &settings.DateColor);
-  settings_changed |= prv_set_color(hours_digits_color_t, &settings.HourDigitsColor);
-  settings_changed |= prv_set_color(minute_digits_color_t, &settings.MinuteDigitsColor);
-  settings_changed |= prv_set_color(minutes_hand_color_t, &settings.MinutesHandColor);
-  settings_changed |= prv_set_color(hour_hand_color_t, &settings.HourHandColor);
-  settings_changed |= prv_set_color(tick_color_t, &settings.MajorTickColor);
-  settings_changed |= prv_set_color(minimized_major_tick_color_t, &settings.MinimizedMajorTickColor);
-  settings_changed |= prv_set_color(battery_line_color_t, &settings.BatteryLineColor);
-  settings_changed |= prv_set_color(btqt_color_t, &settings.BTQTColor);
-
-  ///////////////////////////////
+  // Recalculate in case we need to switch from hour to minute hand
+  hand_angle_native = calculate_hand_angle(prv_tick_time);
 
   if (settings_changed) {
     layer_mark_dirty(s_bg_layer);
@@ -536,6 +590,7 @@ static void prv_parse_settings_dict(DictionaryIterator *iter) {
   }
 
   prv_save_settings();
+  return settings_changed;
 }
 
 #if defined(SUB_MINUTE_USE_APPTIMER)
@@ -611,10 +666,10 @@ static void draw_line_hand(GContext *ctx, int angle, int length, int back_length
   GPoint p4;
   
   #ifdef PBL_ROUND
-      p1 = polar_to_point_offset_native(origin, angle + TRIG_HALF_ANGLE, back_length);
-      p2 = polar_to_point_offset_native(origin, angle, length);
-      p3 = polar_to_point_offset_native(origin_offset, angle + TRIG_HALF_ANGLE, back_length);
-      p4 = polar_to_point_offset_native(origin_offset, angle, length);
+    p1 = polar_to_point_offset_native(origin, angle + TRIG_HALF_ANGLE, back_length);
+    p2 = polar_to_point_offset_native(origin, angle, length);
+    p3 = polar_to_point_offset_native(origin_offset, angle + TRIG_HALF_ANGLE, back_length);
+    p4 = polar_to_point_offset_native(origin_offset, angle, length);
   #else
     if(settings.ForegroundShape){
       p1 = polar_to_point_offset_native(origin, angle + TRIG_HALF_ANGLE, back_length);

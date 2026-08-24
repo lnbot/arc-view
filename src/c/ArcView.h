@@ -64,8 +64,3 @@ typedef struct ClaySettings {
   bool BlankFaceMode;
   bool QuietTimeBlankFace;
 } ClaySettings;
-
-typedef struct {
-  size_t size;
-  uint8_t dictionary[1];
-} PersistDictionary;

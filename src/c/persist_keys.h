@@ -7,6 +7,7 @@
 #define SETTINGS_MAX_BLOCKS 2
 
 // Raw settings dict
+#define SETTINGS_DICT_SIZE_KEY 129
 #define SETTINGS_DICT_KEY 130
 #define SETTINGS_DICT_MAX_BLOCKS 5
 
