@@ -29,11 +29,8 @@ static Layer *s_bg_layer;
 static Layer *s_date_battery_logo_layer;
 static Layer *s_alarm_cal_pin_layer;
 static GRect bounds;
+
 // Fonts
-
-// Smooth interval for updating the minute hand
-const int SMOOTH_WAKEUP_COOKIE = 1;
-
 static FFont* Date_Font;
 static FFont* FontBTQTIconsFctx;
 
@@ -113,7 +110,27 @@ static const UIConfig config = {
 .ComplicationDialWindowSizeAdj = 2,
 .ComplicationDialWindowDistanceAdj = 2,
 };
-#else //defined(PBL_PLATFORM_GABBRO)
+#elif defined(PBL_PLATFORM_CHALK)
+ static const UIConfig config = {
+.font_size_digits = 28,
+.font_size_battery = 10,
+.font_size_date = 9,
+.font_size_logo = 8,
+.font_size_btqt = 12,
+.battery_line = 51,
+.analogue_hand_a = 3+8,
+.analogue_hand_b = 4,
+.hands_shadow = 2,
+.analogue_hand_c = 28,
+.HandCentreOuterRadius = 0,
+.HandCentreInnerRadius = 0,
+.ComplicationBorderAdj = -1,
+.ComplicationDistanceAdj = -1,
+.ComplicationOrbitSizeAdj = 2,
+.ComplicationDialWindowSizeAdj = 2,
+.ComplicationDialWindowDistanceAdj = 3,
+};
+#else //if defined(PBL_PLATFORM_GABBRO)
 static const UIConfig config = {
 .font_size_digits = 44,
 .font_size_battery = 17,
@@ -1040,7 +1057,6 @@ static GPoint get_complication_pos(int angle_native) {
 }
 
 static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
-  fctx_set_fill_color(fctxp, settings.HourDigitsColor);
   GPoint abs_pos = get_complication_pos(angle_native);
   FPoint hour_pos = gpoint_to_fpoint(&abs_pos);
 
@@ -1050,26 +1066,27 @@ static void render_hour_digits_fctx(FContext *fctxp, int angle_native) {
   snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
 
   int hourdraw;
-    char hournow[4];
-    if (clock_is_24h_style()) {
-      hourdraw = s_hours;
-      snprintf(hournow, sizeof(hournow), settings.RemoveZero24h ? "%d" : "%02d", hourdraw);
-    } else {
-      if (s_hours == 0 || s_hours == 12) hourdraw = 12;
-      else 
+  char hournow[4];
+  if (clock_is_24h_style()) {
+    hourdraw = s_hours;
+    snprintf(hournow, sizeof(hournow), settings.RemoveZero24h ? "%d" : "%02d", hourdraw);
+  } else {
+    if (s_hours == 0 || s_hours == 12) hourdraw = 12;
+    else
       hourdraw = s_hours % 12;
-      snprintf(hournow, sizeof(hournow), settings.AddZero12h ? "%02d" : "%d", hourdraw);
-    }
+    snprintf(hournow, sizeof(hournow), settings.AddZero12h ? "%02d" : "%d", hourdraw);
+  }
 
   fctx_begin_fill(fctxp);
   fctx_set_text_em_height(fctxp, Date_Font, config.font_size_digits);
+  fctx_set_offset(fctxp, hour_pos);
 
-  fctx_set_offset(fctxp, hour_pos);
-  fctx_set_offset(fctxp, hour_pos);
   if(use_minute_hand()){
+    fctx_set_fill_color(fctxp, settings.HourDigitsColor);
     fctx_draw_string(fctxp, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
   }
   else{
+    fctx_set_fill_color(fctxp, settings.MinuteDigitsColor);
     fctx_draw_string(fctxp, mindraw, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
   }
   fctx_end_fill(fctxp);
@@ -1304,35 +1321,34 @@ int calculate_hand_angle(struct tm *prv_tm) {
 // Update procedure for the main canvas layer (hour & minute hands)
 static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
+  GColor handColor = use_minute_hand() ? settings.MinutesHandColor : settings.HourHandColor;
 
   #ifdef PBL_ROUND
       draw_line_hand(ctx, hand_angle_native,
           bounds.size.w/2 - config.analogue_hand_a,
           settings.BackLen,
-          settings.MinutesHandColor);
-      draw_hand_center(ctx, settings.MinutesHandColor, settings.BackgroundColor);
+          handColor);
+      draw_hand_center(ctx, handColor, settings.BackgroundColor);
   #else
       if(settings.ForegroundShape){
           draw_line_hand(ctx, hand_angle_native,
               bounds.size.w/2 - config.analogue_hand_a,
               settings.BackLen,
-              settings.MinutesHandColor);
-          draw_hand_center(ctx, settings.MinutesHandColor, settings.BackgroundColor);
+              handColor);
+          draw_hand_center(ctx, handColor, settings.BackgroundColor);
       }
       else{
           draw_line_hand(ctx, hand_angle_native,
               bounds.size.w/2 - config.analogue_hand_c,
               settings.BackLen,
-              settings.MinutesHandColor);
-          draw_hand_center(ctx, settings.MinutesHandColor, settings.BackgroundColor);
+              handColor);
+          draw_hand_center(ctx, handColor, settings.BackgroundColor);
       }
   #endif
 
 }
 
 #define DIAL_WINDOW_SWEEP_ANGLE TRIG_7_32_ANGLE
-// Max number of minutes swept by 7/32 of a circle, rounded up
-#define DIAL_WINDOW_SWEEP_MINUTES ((60 + 7) + 31 / 32)
 
 ///update procedure for background
 static void bg_update_proc(Layer *layer, GContext *ctx) {
