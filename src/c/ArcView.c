@@ -15,6 +15,13 @@
 //#define SUB_MINUTE_USE_APPTIMER
 #define SUB_MINUTE_USE_TICK
 
+//#define LOG_HEAP_STATS
+#ifdef LOG_HEAP_STATS
+#define HEAP_LOG(tag) { APP_LOG(APP_LOG_LEVEL_INFO, "TAG[%s] heap free=%d, used=%d", tag, heap_bytes_free(), heap_bytes_used()); }
+#else
+#define HEAP_LOG(tag) {}
+#endif
+
 // Main window and layers
 static Window *s_window;
 static Layer *s_canvas_layer;
@@ -784,8 +791,6 @@ static void draw_event_arc(GContext *ctx, int hour1, int minute1, int second1, i
   if (arc_end_angle <= arc_start_angle)
     arc_end_angle += TRIG_MAX_ANGLE;
 
-  APP_LOG(APP_LOG_LEVEL_INFO, "drawcalendar: start_angle %08x, end_angle %08x", arc_start_angle, arc_end_angle);
-
   GRect arc_bounds = GRect(arc_width, arc_width, bounds.size.w - 2 * arc_width, bounds.size.h - 2 * arc_width);
 
   // Draw a filled arc, then a line of a contrasting color
@@ -794,8 +799,8 @@ static void draw_event_arc(GContext *ctx, int hour1, int minute1, int second1, i
   graphics_context_set_stroke_color(ctx, get_contrasting_color(color));
   graphics_context_set_stroke_width(ctx, 1);
 
-  graphics_fill_radial(ctx, bounds, GOvalScaleModeFitCircle, arc_width, arc_start_angle, arc_end_angle);
-  graphics_draw_arc(ctx, arc_bounds, GOvalScaleModeFitCircle, arc_start_angle, arc_end_angle);
+  graphics_fill_radial(ctx, bounds, GOvalScaleModeFillCircle, arc_width, arc_start_angle, arc_end_angle);
+  graphics_draw_arc(ctx, arc_bounds, GOvalScaleModeFillCircle, arc_start_angle, arc_end_angle);
 }
 
 static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
@@ -1239,7 +1244,6 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
 
   int base_angle = get_base_angle();
 
-  //APP_LOG(APP_LOG_LEVEL_INFO, "update_logo_date_battery_fctx_layer");
   FContext fctx;
   fctx_init_context(&fctx, ctx);
   fctx_set_color_bias(&fctx, 0);
@@ -1247,6 +1251,7 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
    fctx_enable_aa(true);
   #endif
 
+  HEAP_LOG("Rendering start");
   int startidx = settings.OrbitComplications ? 1 : 0;
   char* compSettings[] = { settings.PosTop, settings.PosRight, settings.PosBottom, settings.PosLeft, NULL };
   int side_angle = settings.OrbitComplications ? TRIG_7_32_ANGLE : TRIG_QUARTER_ANGLE;
@@ -1274,7 +1279,9 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     }
   }
 
+  HEAP_LOG("Rendering end");
   fctx_deinit_context(&fctx);
+  HEAP_LOG("Rendering freed");
 }
 
 int calculate_hand_angle(struct tm *prv_tm) {

@@ -1,7 +1,7 @@
 {
   "name": "arc-view",
   "author": "lnbot",
-  "version": "3.0.1",
+  "version": "1.0.0",
   "keywords": [
     "pebble",
     "watchface",
@@ -22,7 +22,7 @@
     "sdkVersion": "3",
     "enableMultiJS": true,
     "targetPlatforms": [
-      "emery",
+      "chalk",
       "gabbro"
     ],
     "watchapp": {
@@ -104,18 +104,12 @@
           "name": "IMAGE_ICON",
           "memoryFormat": "1Bit",
           "menuIcon": true,
-          "targetPlatforms": [
-            "emery",
-            "gabbro"
-          ]
+          "targetPlatforms": null
         },
         {
           "file": "data/dripicons-v2.ffont",
           "name": "FONT_DRIPICONS_FCTX",
-          "targetPlatforms": [
-            "emery",
-            "gabbro"
-          ],
+          "targetPlatforms": null,
           "type": "raw"
         },
         {
