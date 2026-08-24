@@ -745,8 +745,6 @@ static void draw_line_hand(GContext *ctx, int angle, int length, int back_length
   graphics_fill_circle(ctx, origin_back_offset, settings.BackSize);
   graphics_fill_circle(ctx, origin_offset, settings.CentreSize); //started as 4
 
-
-
   // Now draw the main hand on top
   graphics_context_set_stroke_color(ctx, color);
   graphics_context_set_stroke_width(ctx, settings.HandThickness);
@@ -814,6 +812,35 @@ static void draw_event_pin(GContext *ctx, int hour, int minute, int second, GCol
   graphics_draw_arc(ctx, pin_rect, GOvalScaleModeFitCircle, pin_center_angle - pin_half_angle, pin_center_angle + pin_half_angle);
 }
 
+static void draw_event_arc(GContext *ctx, int hour1, int minute1, int second1, int hour2, int minute2, int second2, GColor color) {
+  static const int arc_width = 4;
+
+  if (hour1 == hour2 && minute1 == minute2 && second1 == second2)
+    return;
+
+  int arc_start_angle = use_minute_hand() ?
+    (TRIG_MAX_ANGLE * minute1 / 60) + (TRIG_MAX_ANGLE * second1 / 3600) :
+    (TRIG_MAX_ANGLE * hour1 / 12) + (TRIG_MAX_ANGLE * minute1 / 720);
+  int arc_end_angle = use_minute_hand() ?
+    (TRIG_MAX_ANGLE * minute2 / 60) + (TRIG_MAX_ANGLE * second2 / 3600) :
+    (TRIG_MAX_ANGLE * hour2 / 12) + (TRIG_MAX_ANGLE * minute2 / 720);
+  if (arc_end_angle <= arc_start_angle)
+    arc_end_angle += TRIG_MAX_ANGLE;
+
+  APP_LOG(APP_LOG_LEVEL_INFO, "drawcalendar: start_angle %08x, end_angle %08x", arc_start_angle, arc_end_angle);
+
+  GRect arc_bounds = GRect(arc_width, arc_width, bounds.size.w - 2 * arc_width, bounds.size.h - 2 * arc_width);
+
+  // Draw a filled arc, then a line of a contrasting color
+  graphics_context_set_antialiased(ctx, true);
+  graphics_context_set_fill_color(ctx, color);
+  graphics_context_set_stroke_color(ctx, get_contrasting_color(color));
+  graphics_context_set_stroke_width(ctx, 1);
+
+  graphics_fill_radial(ctx, bounds, GOvalScaleModeFitCircle, arc_width, arc_start_angle, arc_end_angle);
+  graphics_draw_arc(ctx, arc_bounds, GOvalScaleModeFitCircle, arc_start_angle, arc_end_angle);
+}
+
 static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
   // When using minute hand, 1 hour, otherwise, 12 hours
   uint32_t timeThresholdSec = use_minute_hand() ? 60 * 60 : 12 * 60 * 60;
@@ -858,16 +885,50 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
 
   // Draw calendar event pins (if any and within the next ~hour).
   int count = alarm_calendar_sync_get_event_count();
+  time_t thresholdTime = now + timeThresholdSec;
   for (int i = 0; i < count; i++) {
-    uint32_t event_epoch = alarm_calendar_sync_get_event_at(i);
-    if (event_epoch == 0) {
+    uint32_t diff;
+    CalendarEvent event = alarm_calendar_sync_get_event_at(i);
+    if (event.start_epoch == 0) {
       continue;
     }
-    uint32_t diff = event_epoch - now;
-    if (diff < timeThresholdSec) {
-      time_t t = (time_t)event_epoch;
-      struct tm *event_tm = localtime(&t);
-      draw_event_pin(ctx, event_tm->tm_hour, event_tm->tm_min, 0, settings.CalendarPinColor);
+
+    bool single_point = event.end_epoch == event.start_epoch;
+    bool draw_start = (event.start_epoch - now) < timeThresholdSec;
+    bool draw_end = !single_point && (event.end_epoch - now) < timeThresholdSec;
+    bool draw_arc = !single_point && ((time_t)event.start_epoch < thresholdTime) && ((time_t)event.end_epoch >= now);
+    APP_LOG(APP_LOG_LEVEL_INFO, "drawcalendar: start %d, end %d, arc %d", draw_start, draw_end, draw_arc);
+
+    if (draw_arc) {
+      time_t start_t = ((time_t)event.start_epoch > now) ? (time_t)event.start_epoch : now;
+      time_t end_t = ((time_t)event.end_epoch < thresholdTime) ? (time_t)event.end_epoch : thresholdTime;
+
+      APP_LOG(APP_LOG_LEVEL_INFO, "drawcalendar: start_t %d, end_t %d", start_t, end_t);
+
+      struct tm *event_tm = localtime(&start_t);
+      int start_hr = event_tm->tm_hour;
+      int start_min = event_tm->tm_min;
+      int start_sec = event_tm->tm_sec;
+      event_tm = localtime(&end_t);
+      draw_event_arc(ctx, start_hr, start_min, start_sec, event_tm->tm_hour, event_tm->tm_min, event_tm->tm_sec, settings.CalendarPinColor);
+    }
+
+    if (draw_end) {
+      diff = event.end_epoch - now;
+      if (diff < timeThresholdSec) {
+        time_t t = (time_t)event.end_epoch;
+        struct tm *event_tm = localtime(&t);
+        draw_event_pin(ctx, event_tm->tm_hour, event_tm->tm_min, 0, settings.CalendarPinColor);
+      }
+    }
+
+    if (draw_start) {
+      diff = event.start_epoch - now;
+      if (diff < timeThresholdSec) {
+        time_t t = (time_t)event.start_epoch;
+        struct tm *event_tm = localtime(&t);
+        draw_event_pin(ctx, event_tm->tm_hour, event_tm->tm_min, 0, settings.CalendarPinColor);
+      }
     }
   }
 }
@@ -1408,7 +1469,7 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
       if (settings.ShowWatchDialWindow &&
           ((!ends_reversed && (i < hr_start || i > hr_end)) ||
           (ends_reversed && (i < hr_start && i > hr_end)))) {
-        tick_length = 6;  // major tick is smaller outside of the window
+        tick_length = 8;  // major tick is smaller outside of the window
         tick_color = settings.MinimizedMajorTickColor;
       }
 

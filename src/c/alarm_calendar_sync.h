@@ -34,14 +34,19 @@
 #define SYNC_DATA_PERSIST_KEY 126
 
 // Update this when SyncData struct changes
-#define SYNC_DATA_VERSION 1
+#define SYNC_DATA_VERSION 2
+
+typedef struct {
+  uint32_t start_epoch;
+  uint32_t end_epoch;
+} __attribute__((__packed__)) CalendarEvent;
 
 // In-memory copy of the latest synced alarm/calendar data.
 typedef struct {
   int      version;                     // version of this struct (for future-proofing)
   uint32_t alarm_epoch;                 // 0 = no alarm set / cleared
   uint32_t timer_epoch;                 // 0 = no timer running / cleared
-  uint32_t calendar[MAX_CALENDAR_EVENTS]; // next event epochs (0-padded beyond count)
+  CalendarEvent calendar[MAX_CALENDAR_EVENTS]; // next event epochs (0-padded beyond count)
   int      event_count;                 // number of valid entries in calendar[]
   time_t   last_updated;                // time(NULL) when data was last received
 } SyncData;
@@ -66,6 +71,6 @@ void alarm_calendar_sync_maybe_request_update(void);
 // Accessors for the in-memory data (available to the watchface).
 uint32_t alarm_calendar_sync_get_alarm(void);
 uint32_t alarm_calendar_sync_get_timer(void);
-uint32_t alarm_calendar_sync_get_event_at(int index);
+CalendarEvent alarm_calendar_sync_get_event_at(int index);
 int      alarm_calendar_sync_get_event_count(void);
 time_t   alarm_calendar_sync_last_updated(void);

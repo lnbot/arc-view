@@ -98,26 +98,40 @@ static void prv_decode_calendar(const uint8_t *data, uint32_t length) {
     // The companion stores each uint32 in little-endian byte order, so on a
     // little-endian host a direct cast suffices; on big-endian hosts the value
     // must be byte-swapped back.
-    uint32_t v = *(const uint32_t *)(data + offset);
+    uint32_t start = *(const uint32_t *)(data + offset);
     #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    v = __builtin_bswap32(v);
+    start = __builtin_bswap32(start);
     #endif
     offset += 4;
 
     // The list is terminated by a zero uint32 value, which is not an event, so
     // stop decoding when we encounter it.
-    if (v == 0) {
+    if (start == 0 || offset + 4 > length) {
       break;
     }
 
-    s_data.calendar[count++] = v;
+    uint32_t end = *(const uint32_t *)(data + offset);
+    #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    end = __builtin_bswap32(end);
+    #endif
+    offset += 4;
+
+    // This shouldn't happen, but just in case...
+    if (end == 0) {
+      break;
+    }
+
+    if (start > end)
+      APP_LOG(APP_LOG_LEVEL_WARNING, "prv_decode_calendar: start > end (%u > %u)", start, end);
+
+    s_data.calendar[count++] = (CalendarEvent){ start, end };
   }
 
   s_data.event_count = count;
 
   // Zero-pad any remaining calendar slots beyond the events we stored.
   for (int i = count; i < MAX_CALENDAR_EVENTS; i++) {
-    s_data.calendar[i] = 0;
+    s_data.calendar[i] = (CalendarEvent){ 0, 0 };
   }
 }
 
@@ -281,9 +295,9 @@ uint32_t alarm_calendar_sync_get_timer(void) {
   return s_data.timer_epoch;
 }
 
-uint32_t alarm_calendar_sync_get_event_at(int index) {
+CalendarEvent alarm_calendar_sync_get_event_at(int index) {
   if (index < 0 || index >= MAX_CALENDAR_EVENTS) {
-    return 0;
+    return (CalendarEvent){ 0, 0 };
   }
   return s_data.calendar[index];
 }
