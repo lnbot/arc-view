@@ -47,12 +47,12 @@ var TIMELINE_API_URL = 'https://timeline-api.getpebble.com/v1/user/pins/';
 
 var PIN_CONFIG = [];
 PIN_CONFIG[PIN_TARGET_ALARM] = {
-  id: 'monologue-synced-alarm',
+  id: 'arc-view-synced-alarm',
   title: 'Phone alarm',
   tinyIcon: 'system://images/ALARM_CLOCK'
 };
 PIN_CONFIG[PIN_TARGET_TIMER] = {
-  id: 'monologue-synced-timer',
+  id: 'arc-view-synced-timer',
   title: 'Phone timer',
   tinyIcon: 'system://images/ALARM_CLOCK'
 };
@@ -61,21 +61,21 @@ function timelineRequest(pin, type) {
   var url = TIMELINE_API_URL + pin.id;
   var xhr = new XMLHttpRequest();
   xhr.onload = function() {
-    console.log('Monologue timeline: ' + type + ' pin ' + pin.id +
+    console.log('Arc View timeline: ' + type + ' pin ' + pin.id +
                 ' -> ' + this.status + ' ' + this.responseText);
   };
   xhr.onerror = function() {
-    console.log('Monologue timeline: error ' + type + ' for pin ' + pin.id);
+    console.log('Arc View timeline: error ' + type + ' for pin ' + pin.id);
   };
   xhr.open(type, url);
   xhr.setRequestHeader('Content-Type', 'application/json');
 
   Pebble.getTimelineToken(function(token) {
     xhr.setRequestHeader('X-User-Token', token);
-    //console.log('Monologue timeline: sending ' + JSON.stringify(pin) + ' to ' + url);
+    //console.log('Arc View timeline: sending ' + JSON.stringify(pin) + ' to ' + url);
     xhr.send(JSON.stringify(pin));
   }, function(errorId, errorMessage) {
-    console.log('Monologue timeline: could not get timeline token: ' +
+    console.log('Arc View timeline: could not get timeline token: ' +
                 errorId + ' ' + errorMessage);
   });
 }
@@ -113,7 +113,7 @@ function deletePin(target) {
 
 Pebble.addEventListener('appmessage', function(e) {
   var payload = e.payload;
-  //console.log('Monologue: appmessage received: ' + JSON.stringify(payload));
+  //console.log('Arc View: appmessage received: ' + JSON.stringify(payload));
   if (!payload || ('PinTarget' in payload) === false) {
     return;
   }
@@ -121,10 +121,10 @@ Pebble.addEventListener('appmessage', function(e) {
   var target = payload['PinTarget'];
 
   if ('PinCreate' in payload) {
-    console.log('Monologue: insert pin target ' + target + ' epoch ' + payload['PinCreate']);
+    console.log('Arc View: insert pin target ' + target + ' epoch ' + payload['PinCreate']);
     insertPin(target, payload['PinCreate']);
   } else if ('PinDelete' in payload) {
-    console.log('Monologue: delete pin target ' + target);
+    console.log('Arc View: delete pin target ' + target);
     deletePin(target);
   }
 });

@@ -1,5 +1,5 @@
 {
-  "name": "monologue-orbital",
+  "name": "arc-view",
   "author": "lnbot",
   "version": "3.0.1",
   "keywords": [
@@ -17,7 +17,7 @@
     "pebble-fctx-compiler": "^1.2.2"
   },
   "pebble": {
-    "displayName": "monologue-orbital",
+    "displayName": "Arc View",
     "uuid": "c4b040f4-ea4c-481c-8050-355006f5804d",
     "sdkVersion": "3",
     "enableMultiJS": true,

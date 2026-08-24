@@ -1,7 +1,7 @@
 module.exports = [
   {
     "type": "heading",
-    "defaultValue": "monologue-orbital"
+    "defaultValue": "Arc View"
   },
   {
     "type": "text",

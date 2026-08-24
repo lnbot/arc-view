@@ -1,5 +1,5 @@
 #include <pebble.h>
-#include "Monologue.h"
+#include "ArcView.h"
 #include "alarm_calendar_sync.h"
 #include "utils/weekday.h"
 #include "utils/MathUtils.h"

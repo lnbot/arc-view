@@ -2,8 +2,8 @@
 #include <pebble.h>
 
 // ----
-// AppMessage keys used by the Monologue Orbital phone companion
-// (see PebbleMessageKeys.kt in lnbot/monologue-orbital-companion).
+// AppMessage keys used by the Arc View phone companion
+// (see PebbleMessageKeys.kt in lnbot/arc-view-companion).
 // These are raw uint32 identifiers that must agree EXACTLY with the phone side.
 // They are deliberately NOT added to package.json "messageKeys", because the
 // auto-generated MESSAGE_KEY_* constants are assigned 10000 + array index and
@@ -18,7 +18,7 @@
 // MESSAGE_KEY_PinDelete / MESSAGE_KEY_PinTarget, defined in package.json
 // "messageKeys" (the compiler assigns their numeric ids). Only the sync keys
 // 110-113 above are hard-coded because they must match the external companion
-// project (lnbot/monologue-orbital-companion). The pin keys need no such
+// project (lnbot/arc-view-companion). The pin keys need no such
 // external agreement.
 #define ALARM_CAL_SYNC_PIN_TARGET_ALARM 0  // PIN_TARGET value: an alarm pin
 #define ALARM_CAL_SYNC_PIN_TARGET_TIMER 1  // PIN_TARGET value: a timer pin
