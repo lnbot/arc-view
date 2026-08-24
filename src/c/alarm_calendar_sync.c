@@ -254,9 +254,8 @@ void alarm_calendar_sync_init(AppMessageInboxReceived forward) {
   prv_load_data();
 
   // Open AppMessage and register our inbox handler. Buffers are sized to match
-  // the original settings traffic (512 bytes each); the sync payload is tiny
-  // (<=68 bytes) and fits easily.
-  app_message_open(512, 512);
+  // the original settings traffic.
+  app_message_open(768, 256);
   app_message_register_inbox_received(prv_inbox_received_handler);
   app_message_register_inbox_dropped(prv_inbox_dropped_handler);
   app_message_register_outbox_sent(prv_outbox_sent_handler);

@@ -1,5 +1,6 @@
 #pragma once
 #include <pebble.h>
+#include "persist_keys.h"
 
 // ----
 // AppMessage keys used by the Arc View phone companion
@@ -29,9 +30,6 @@
 
 // Data is considered stale after this many seconds and a re-sync is requested.
 #define SYNC_DATA_FRESH_SECONDS (30 * 60)
-
-// Persist key for the alarm/calendar sync data (SETTINGS_KEY 125 is used by settings).
-#define SYNC_DATA_PERSIST_KEY 126
 
 // Update this when SyncData struct changes
 #define SYNC_DATA_VERSION 2

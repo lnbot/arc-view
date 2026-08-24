@@ -1,6 +1,7 @@
 #include <pebble.h>
 #include "ArcView.h"
 #include "alarm_calendar_sync.h"
+#include "utils/storage_utils.h"
 #include "utils/weekday.h"
 #include "utils/MathUtils.h"
 #include "message_keys.auto.h"
@@ -18,11 +19,7 @@
 static Window *s_window;
 static Layer *s_canvas_layer;
 static Layer *s_bg_layer;
-//static Layer *s_dial_layer;
-//static Layer *s_dial_digits_layer;
 static Layer *s_date_battery_logo_layer;
-//static Layer *s_canvas_second_hand;
-static Layer *s_canvas_battery;
 static Layer *s_alarm_cal_pin_layer;
 static GRect bounds;
 // Fonts
@@ -139,6 +136,8 @@ time_t next_alarm_time = 0;
 static void prv_save_settings(void);
 static void prv_default_settings(void);
 static void prv_load_settings(void);
+static bool prv_restore_from_settings_dict(void);
+static void prv_parse_settings_dict(DictionaryIterator* iter);
 static void prv_inbox_received_handler(DictionaryIterator *iter, void *context);
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed);
 #if defined(SUB_MINUTE_USE_APPTIMER)
@@ -146,7 +145,6 @@ static void apptimer_handler(void *data);
 #endif
 static void bg_update_proc(Layer *layer, GContext *ctx);
 static void update_logo_date_battery_fctx_layer(Layer *layer, GContext * ctx);
-static void layer_update_proc_battery_line(Layer *layer, GContext * ctx);
 static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx);
 static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx);
 static int calculate_hand_angle(struct tm *tick_time);
@@ -161,47 +159,45 @@ static bool skip_render_complications();
 
 // Save settings to persistent storage
 static void prv_save_settings(void) {
-  persist_write_data(SETTINGS_KEY, &settings, sizeof(settings));
+  //int size = 0 +
+  persist_write_data_multi(SETTINGS_KEY, &settings, sizeof(settings), SETTINGS_MAX_BLOCKS);
+  //APP_LOG(APP_LOG_LEVEL_INFO, "SaveSettings: wrote %d bytes", size);
 }
 
 
 // Set default settings
 static void prv_default_settings(void) {
+  settings.version = SETTINGS_VERSION;
   settings.EnableDate = true;
   settings.EnableBattery = true;
   settings.EnableBatteryLine = true;
   settings.EnableLogo = true;
   snprintf(settings.LogoText, sizeof(settings.LogoText), "%s", "pebble");
-  settings.BackgroundColor1 = GColorWhite;
+  settings.BackgroundColor = GColorLiberty;
   settings.ComplicationBorderColor = GColorLightGray;
   settings.ComplicationBackgroundColor = GColorWhite;
-  settings.ComplicationShadowColor = GColorWhite;
-  settings.MinuteHandShadowColor = GColorBabyBlueEyes;
-  settings.TextColor1 = GColorWhite;
-  settings.MinorTickColor = GColorBabyBlueEyes;
-  settings.TextColor3 = GColorDarkGray;
-  settings.DateColor = GColorDarkGray;
-  settings.HourDigitsColor = GColorCobaltBlue;
-  settings.HoursHandBorderColor = GColorDarkGray;
-  settings.MinutesHandColor = GColorCobaltBlue;
-  settings.MinutesHandBorderColor = GColorCobaltBlue;
-  settings.MajorTickColor = GColorCobaltBlue;
-  settings.MinimizedMajorTickColor = GColorCobaltBlue;
-  settings.SecondsHandColor = GColorOrange;
-  settings.BatteryLineColor = GColorOrange;
-  settings.BTQTColor = GColorDarkGray;
+  settings.ComplicationShadowColor = GColorDarkGray;
+  settings.MinuteHandShadowColor = GColorLightGray;
+  settings.MinorTickColor = GColorBlack;
+  settings.DateColor = GColorBlack;
+  settings.HourDigitsColor = GColorOxfordBlue;
+  settings.MinuteDigitsColor = GColorBulgarianRose;
+  settings.HourHandColor = GColorOxfordBlue;
+  settings.MinutesHandColor = GColorBulgarianRose;
+  settings.MajorTickColor = GColorBlack;
+  settings.MinimizedMajorTickColor = GColorWhite;
+  settings.BatteryLineColor = GColorIslamicGreen;
+  settings.BTQTColor = GColorBlack;
   settings.showMajorTick = true;
   settings.showMinorTick = true;
+  snprintf(settings.PosTop, sizeof(settings.PosTop), "%s", "ap");
   snprintf(settings.PosLeft, sizeof(settings.PosLeft), "%s", "hr");
   snprintf(settings.PosRight, sizeof(settings.PosRight), "%s", "lo");
-  snprintf(settings.PosTop, sizeof(settings.PosTop), "%s", "ap");
   snprintf(settings.PosBottom, sizeof(settings.PosBottom), "%s", "dt");
   settings.ShadowOn = true;
-  settings.Font = 1;
   settings.VibeOn = false;
   settings.AddZero12h = false;
   settings.RemoveZero24h = false;
-  //settings.showlocalAMPM = true;
   settings.ForegroundShape = true;  //true = round, false = rect
   settings.CentreSize = config.HandCentreOuterRadius;
   settings.InnerCentreSize = config.HandCentreInnerRadius;
@@ -214,9 +210,9 @@ static void prv_default_settings(void) {
   settings.MinuteHandUpdateIntervalSec = 10;
   settings.OrbitComplications = true;
   settings.EnableAlarmCalendarSync = false;
-  settings.LocalAlarmPinColor = GColorImperialPurple;
-  settings.SyncedAlarmPinColor = GColorDarkCandyAppleRed;
-  settings.CalendarPinColor = GColorVividCerulean;
+  settings.LocalAlarmPinColor = GColorScreaminGreen;
+  settings.SyncedAlarmPinColor = GColorBrilliantRose;
+  settings.CalendarPinColor = GColorChromeYellow;
   settings.TimelineAlarmPin = false;
   settings.TimelineTimerPin = false;
   settings.ShowWatchDialWindow = true;
@@ -245,12 +241,90 @@ static void bluetooth_vibe_icon (bool connected) {
 
 // Load settings from persistent storage
 static void prv_load_settings(void) {
+  int version = -1;
+
   prv_default_settings();
-  persist_read_data(SETTINGS_KEY, &settings, sizeof(settings));
+  persist_read_data(SETTINGS_KEY, &version, sizeof(version));
+  APP_LOG(APP_LOG_LEVEL_INFO, "LoadSettings: version=%d", version);
+
+  // Nothing there, so just bail.
+  if (version == -1) {
+    prv_save_settings();
+    return;
+  }
+
+  if (version == settings.version) {
+    persist_read_data_multi(SETTINGS_KEY, &settings, sizeof(settings), SETTINGS_MAX_BLOCKS);
+    return;
+  }
+
+  // Fallback: incompatible native settings, but reparse the last received settings dict
+  bool restored = prv_restore_from_settings_dict();
+  APP_LOG(APP_LOG_LEVEL_INFO, "LoadSettings: version mismatch, restore from dict (success=%d)", restored);
+  prv_save_settings();
+}
+
+static bool prv_set_color(Tuple *val, GColor *target) {
+  if (val) {
+    *target = GColorFromHEX(val->value->int32);
+    return true;
+  }
+  return false;
+}
+
+static bool prv_set_bool(Tuple *val, bool *target) {
+  if (val) {
+    *target = val->value->int32 != 0;
+    return true;
+  }
+  return false;
+}
+
+static bool prv_set_int32(Tuple *val, int *target) {
+  if (val) {
+    *target = (int) val->value->int32;
+    return true;
+  }
+  return false;
 }
 
 // AppMessage inbox handler
 static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) {
+  prv_parse_settings_dict(iter);
+
+  size_t size = (char *)iter->end - (char *)iter->dictionary;
+  persist_write_data_multi(SETTINGS_DICT_KEY, iter->dictionary, size, SETTINGS_DICT_MAX_BLOCKS);
+  //APP_LOG(APP_LOG_LEVEL_INFO, "Write settings dict size=%u", size);
+}
+
+static bool prv_restore_from_settings_dict() {
+  PersistDictionary *pd = NULL;
+  bool ret = false;
+  size_t size;
+
+  if (persist_read_data_multi(SETTINGS_DICT_KEY, &size, sizeof(size), SETTINGS_DICT_MAX_BLOCKS) != sizeof(size)) {
+    APP_LOG(APP_LOG_LEVEL_INFO, "Settings dict not in persistent storage");
+    goto cleanup;
+  }
+
+  pd = (PersistDictionary *)(size);
+  if (pd == NULL) {
+    APP_LOG(APP_LOG_LEVEL_INFO, "Settings dict malloc() failed");
+    goto cleanup;
+  }
+
+  DictionaryIterator iter;
+  dict_read_begin_from_buffer(&iter, pd->dictionary, pd->size - sizeof(size));
+  prv_parse_settings_dict(&iter);
+
+cleanup:
+  if (pd == NULL)
+    free(pd);
+  return ret;
+}
+
+static void prv_parse_settings_dict(DictionaryIterator *iter) {
+  //APP_LOG(APP_LOG_LEVEL_INFO, "ParseSettingsDict: Dict size=%u", (char *)iter->end - (char *)iter->dictionary);
   bool settings_changed = false;
 
   Tuple *vibe_t = dict_find(iter, MESSAGE_KEY_VibeOn);
@@ -259,21 +333,18 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *enable_battery_line_t = dict_find(iter, MESSAGE_KEY_EnableBatteryLine);
   Tuple *enable_logo_t = dict_find(iter, MESSAGE_KEY_EnableLogo);
   Tuple *logotext_t = dict_find(iter, MESSAGE_KEY_LogoText);
-  Tuple *bg_color1_t = dict_find(iter, MESSAGE_KEY_BackgroundColor1);
+  Tuple *bg_color_t = dict_find(iter, MESSAGE_KEY_BackgroundColor);
   Tuple *comp_border_color_t = dict_find(iter, MESSAGE_KEY_ComplicationBorderColor);
   Tuple *comp_background_color_t = dict_find(iter, MESSAGE_KEY_ComplicationBackgroundColor);
   Tuple *comp_shadow_color_t = dict_find(iter, MESSAGE_KEY_ComplicationShadowColor);
   Tuple *bg_color2_t = dict_find(iter, MESSAGE_KEY_MinuteHandShadowColor);
-  //Tuple *text_color1_t = dict_find(iter, MESSAGE_KEY_TextColor1);
   Tuple *text_color2_t = dict_find(iter, MESSAGE_KEY_MinorTickColor);
-  //Tuple *text_color3_t = dict_find(iter, MESSAGE_KEY_TextColor3);
   Tuple *date_color_t = dict_find(iter, MESSAGE_KEY_DateColor);
-  Tuple *hours_color_t = dict_find(iter, MESSAGE_KEY_HourDigitsColor);
-  //Tuple *hours_border_t = dict_find(iter, MESSAGE_KEY_HoursHandBorderColor);
-  Tuple *minutes_color_t = dict_find(iter, MESSAGE_KEY_MinutesHandColor);
-  //Tuple *minutes_border_t = dict_find(iter, MESSAGE_KEY_MinutesHandBorderColor);
+  Tuple *hours_digits_color_t = dict_find(iter, MESSAGE_KEY_HourDigitsColor);
+  Tuple *minute_digits_color_t = dict_find(iter, MESSAGE_KEY_MinuteDigitsColor);
+  Tuple *minutes_hand_color_t = dict_find(iter, MESSAGE_KEY_MinutesHandColor);
+  Tuple *hour_hand_color_t = dict_find(iter, MESSAGE_KEY_HourHandColor);
   Tuple *tick_color_t = dict_find(iter, MESSAGE_KEY_MajorTickColor);
-  //Tuple *seconds_color_t = dict_find(iter, MESSAGE_KEY_SecondsHandColor);
   Tuple *battery_line_color_t = dict_find(iter, MESSAGE_KEY_BatteryLineColor);
   Tuple *btqt_color_t = dict_find(iter, MESSAGE_KEY_BTQTColor);
   Tuple *shadowon_t = dict_find(iter, MESSAGE_KEY_ShadowOn);
@@ -314,77 +385,17 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     APP_LOG(APP_LOG_LEVEL_WARNING, "XCLAY message found.  This should not be sent to the watchface.");
   }
 
-  if (fg_shape_t) {
-    settings.ForegroundShape = fg_shape_t->value->int32 == 1;
-    layer_mark_dirty(s_bg_layer);
-    layer_mark_dirty(s_canvas_layer);
-  }
-
-  if (dig_t) {
-    settings.DigitalHour = dig_t->value->int32 != 0;
-    layer_mark_dirty(s_bg_layer);
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (qt_blank_face_t) {
-    settings.QuietTimeBlankFace = qt_blank_face_t->value->int32 != 0;
-    layer_mark_dirty(s_bg_layer);
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (blank_face_t) {
-    settings.BlankFaceMode = blank_face_t->value->int32 != 0;
-    layer_mark_dirty(s_bg_layer);
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (ocent_t) {
-    settings.CentreSize = (int) ocent_t -> value -> int32;
-    layer_mark_dirty(s_bg_layer);
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (icent_t) {
-    settings.InnerCentreSize = (int) icent_t -> value -> int32;
-    layer_mark_dirty(s_bg_layer);
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (hand_t) {
-    settings.HandThickness = (int) hand_t -> value -> int32;
-    layer_mark_dirty(s_bg_layer);
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (back_t) {
-    settings.BackSize = (int) back_t -> value -> int32;
-    layer_mark_dirty(s_bg_layer);
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (backlen_t) {
-    settings.BackLen = (int) backlen_t -> value -> int32;
-    layer_mark_dirty(s_bg_layer);
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if(majort_t){
-    settings.showMajorTick = majort_t->value->int32 != 0;
-    layer_mark_dirty(s_bg_layer);
-  } 
-  
-  if(minort_t){
-    settings.showMinorTick = minort_t->value->int32 != 0;
-    layer_mark_dirty(s_bg_layer);
-  }
+  settings_changed |= prv_set_bool(fg_shape_t, &settings.ForegroundShape);
+  settings_changed |= prv_set_bool(dig_t, &settings.DigitalHour);
+  settings_changed |= prv_set_bool(qt_blank_face_t, &settings.QuietTimeBlankFace);
+  settings_changed |= prv_set_bool(blank_face_t, &settings.BlankFaceMode);
+  settings_changed |= prv_set_int32(ocent_t, (int*)&settings.CentreSize);
+  settings_changed |= prv_set_int32(icent_t, &settings.InnerCentreSize);
+  settings_changed |= prv_set_int32(hand_t, &settings.HandThickness);
+  settings_changed |= prv_set_int32(back_t, &settings.BackSize);
+  settings_changed |= prv_set_int32(backlen_t, &settings.BackLen);
+  settings_changed |= prv_set_bool(majort_t, &settings.showMajorTick);
+  settings_changed |= prv_set_bool(minort_t, &settings.showMinorTick);
 
   if(posleft_t){
     snprintf(settings.PosLeft, sizeof(settings.PosLeft), "%s", posleft_t -> value -> cstring);
@@ -406,32 +417,10 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     layer_mark_dirty(s_date_battery_logo_layer);
   }
 
-  if (vibe_t){
-    if (vibe_t -> value -> int32 == 0){
-      settings.VibeOn = false;
-      //APP_LOG(APP_LOG_LEVEL_DEBUG, "Vibe off");
-    } else {
-      settings.VibeOn = true;
-      //APP_LOG(APP_LOG_LEVEL_DEBUG, "Vibe on");
-    }
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (addzero12_t) {
-    settings.AddZero12h = addzero12_t->value->int32 != 0;
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (remzero24_t) {
-    settings.RemoveZero24h = remzero24_t->value->int32 != 0;
-     layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (enable_date_t) {
-    settings.EnableDate = enable_date_t->value->int32 == 1;
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
+  settings_changed |= prv_set_bool(vibe_t, &settings.VibeOn);
+  settings_changed |= prv_set_bool(addzero12_t, &settings.AddZero12h);
+  settings_changed |= prv_set_bool(remzero24_t, &settings.RemoveZero24h);
+  settings_changed |= prv_set_bool(enable_date_t, &settings.EnableDate);
 
   if (enable_logo_t) {
     settings.EnableLogo = enable_logo_t->value->int32 == 1;
@@ -448,26 +437,12 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
       snprintf(settings.LogoText, sizeof(settings.LogoText), "%s", "");
     }
 
-    layer_mark_dirty(s_date_battery_logo_layer);
+    settings_changed = true;
   }
 
-  if (enable_battery_t) {
-    settings.EnableBattery = enable_battery_t->value->int32 == 1;
-    layer_mark_dirty(s_canvas_battery);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (enable_battery_line_t) {
-    settings.EnableBatteryLine = enable_battery_line_t->value->int32 == 1;
-    layer_mark_dirty(s_canvas_battery);
-  }
-
-  if (complication_font_size_adj_t) {
-    settings.ComplicationFontSizeAdj = complication_font_size_adj_t->value->int32;
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_canvas_battery);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
+  settings_changed |= prv_set_bool(enable_battery_t, &settings.EnableBattery);
+  settings_changed |= prv_set_bool(enable_battery_line_t, &settings.EnableBatteryLine);
+  settings_changed |= prv_set_int32(complication_font_size_adj_t, &settings.ComplicationFontSizeAdj);
 
   if (minute_hand_updates_per_min_t) {
     int updates = minute_hand_updates_per_min_t->value->int32;
@@ -484,17 +459,10 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
       SECOND_UNIT : MINUTE_UNIT, tick_handler);
 #endif
 
-    layer_mark_dirty(s_bg_layer);
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
+    settings_changed = true;
   }
 
-  if (orbit_complications_t) {
-    settings.OrbitComplications = orbit_complications_t->value->int32 == 1;
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_canvas_battery);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
+  settings_changed |= prv_set_bool(orbit_complications_t, &settings.OrbitComplications);
 
   if (enable_alarm_calendar_sync_t) {
     settings.EnableAlarmCalendarSync = enable_alarm_calendar_sync_t->value->int32 == 1;
@@ -511,20 +479,9 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     alarm_calendar_sync_set_timer_pin(settings.TimelineTimerPin);
   }
 
-  if (local_alarm_pin_color_t) {
-    settings.LocalAlarmPinColor = GColorFromHEX(local_alarm_pin_color_t->value->int32);
-    settings_changed = true;
-  }
-
-  if (synced_alarm_pin_color_t) {
-    settings.SyncedAlarmPinColor = GColorFromHEX(synced_alarm_pin_color_t->value->int32);
-    settings_changed = true;
-  }
-
-  if (calendar_pin_color_t) {
-    settings.CalendarPinColor = GColorFromHEX(calendar_pin_color_t->value->int32);
-    settings_changed = true;
-  }
+  settings_changed |= prv_set_color(local_alarm_pin_color_t, &settings.LocalAlarmPinColor);
+  settings_changed |= prv_set_color(synced_alarm_pin_color_t, &settings.SyncedAlarmPinColor);
+  settings_changed |= prv_set_color(calendar_pin_color_t, &settings.CalendarPinColor);
 
   if (show_watch_dial_window_t) {
     settings.ShowWatchDialWindow = (show_watch_dial_window_t->value->int32 == 1) && settings.OrbitComplications;
@@ -534,10 +491,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     settings_changed = true;
   }
 
-  if (watch_dial_window_color_t) {
-    settings.WatchDialWindowColor = GColorFromHEX(watch_dial_window_color_t->value->int32);
-    settings_changed = true;
-  }
+  settings_changed |= prv_set_color(watch_dial_window_color_t, &settings.WatchDialWindowColor);
 
   // Force the hand to switch between hours and minutes
   if (oldUseMinuteHand != use_minute_hand())
@@ -545,83 +499,32 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
 
   /////////////////////////////////////
   // Set the colors for the watchface
-  if (bg_color1_t) {
-    settings.BackgroundColor1 = GColorFromHEX(bg_color1_t->value->int32);
-    settings_changed = true;
-  }
-
-  if (comp_border_color_t) {
-    settings.ComplicationBorderColor = GColorFromHEX(comp_border_color_t->value->int32);
-    settings_changed = true;
-  }
-
-  if (comp_background_color_t) {
-    settings.ComplicationBackgroundColor = GColorFromHEX(comp_background_color_t->value->int32);
-    settings_changed = true;
-  }
-
-  if (comp_shadow_color_t) {
-    settings.ComplicationShadowColor = GColorFromHEX(comp_shadow_color_t->value->int32);
-    settings_changed = true;
-  }
+  settings_changed |= prv_set_color(bg_color_t, &settings.BackgroundColor);
+  settings_changed |= prv_set_color(comp_border_color_t, &settings.ComplicationBorderColor);
+  settings_changed |= prv_set_color(comp_background_color_t, &settings.ComplicationBackgroundColor);
+  settings_changed |= prv_set_color(comp_shadow_color_t, &settings.ComplicationShadowColor);
 
   if (shadowon_t) {
     settings.ShadowOn = shadowon_t->value->int32 == 1;
 
       if(settings.ShadowOn){
-        if (bg_color2_t) {
-          settings.MinuteHandShadowColor = GColorFromHEX(bg_color2_t->value->int32);
-          settings_changed = true;
-        }
+        settings_changed |= prv_set_color(bg_color2_t, &settings.MinuteHandShadowColor);
       }
       else {
-      settings.MinuteHandShadowColor = settings.BackgroundColor1;
+      settings.MinuteHandShadowColor = settings.BackgroundColor;
       }
   }
 
-  if (text_color2_t) {
-    settings.MinorTickColor = GColorFromHEX(text_color2_t->value->int32);
-    layer_mark_dirty(s_bg_layer);
-  }
-
-  if (date_color_t) {
-    settings.DateColor = GColorFromHEX(date_color_t->value->int32);
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-  if (hours_color_t) {
-    settings.HourDigitsColor = GColorFromHEX(hours_color_t->value->int32);
-    layer_mark_dirty(s_canvas_layer);
-    // layer_mark_dirty(s_canvas_second_hand);
-  }
-
-  if (minutes_color_t) {
-    settings.MinutesHandColor = GColorFromHEX(minutes_color_t->value->int32);
-    layer_mark_dirty(s_canvas_layer);
-  //  layer_mark_dirty(s_canvas_second_hand);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (tick_color_t) {
-    settings.MajorTickColor = GColorFromHEX(tick_color_t->value->int32);
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (minimized_major_tick_color_t) {
-    settings.MinimizedMajorTickColor = GColorFromHEX(minimized_major_tick_color_t->value->int32);
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
-
-  if (battery_line_color_t) {
-    settings.BatteryLineColor = GColorFromHEX(battery_line_color_t->value->int32);
-    layer_mark_dirty(s_canvas_battery);
-  }
-  if (btqt_color_t) {
-    settings.BTQTColor = GColorFromHEX(btqt_color_t->value->int32);
-    layer_mark_dirty(s_date_battery_logo_layer);
-  }
+  settings_changed |= prv_set_color(text_color2_t, &settings.MinorTickColor);
+  settings_changed |= prv_set_color(date_color_t, &settings.DateColor);
+  settings_changed |= prv_set_color(hours_digits_color_t, &settings.HourDigitsColor);
+  settings_changed |= prv_set_color(minute_digits_color_t, &settings.MinuteDigitsColor);
+  settings_changed |= prv_set_color(minutes_hand_color_t, &settings.MinutesHandColor);
+  settings_changed |= prv_set_color(hour_hand_color_t, &settings.HourHandColor);
+  settings_changed |= prv_set_color(tick_color_t, &settings.MajorTickColor);
+  settings_changed |= prv_set_color(minimized_major_tick_color_t, &settings.MinimizedMajorTickColor);
+  settings_changed |= prv_set_color(battery_line_color_t, &settings.BatteryLineColor);
+  settings_changed |= prv_set_color(btqt_color_t, &settings.BTQTColor);
 
   ///////////////////////////////
 
@@ -629,7 +532,6 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     layer_mark_dirty(s_bg_layer);
     layer_mark_dirty(s_canvas_layer);
     layer_mark_dirty(s_date_battery_logo_layer);
-    layer_mark_dirty(s_canvas_battery);
     layer_mark_dirty(s_alarm_cal_pin_layer);
   }
 
@@ -813,7 +715,7 @@ static void draw_event_pin(GContext *ctx, int hour, int minute, int second, GCol
 }
 
 static void draw_event_arc(GContext *ctx, int hour1, int minute1, int second1, int hour2, int minute2, int second2, GColor color) {
-  static const int arc_width = 4;
+  static const int arc_width = 5;
 
   if (hour1 == hour2 && minute1 == minute2 && second1 == second2)
     return;
@@ -1019,8 +921,8 @@ static GPoint relative_gpoint_to_absolute(GPoint *gpoint) {
 }
 
 static void draw_complication_border_bg(FContext *fctxp, GPoint center) {
-  bool draw_border = settings.ComplicationBorderColor.argb != settings.BackgroundColor1.argb;
-  bool draw_background = settings.ComplicationBackgroundColor.argb != settings.BackgroundColor1.argb;
+  bool draw_border = settings.ComplicationBorderColor.argb != settings.BackgroundColor.argb;
+  bool draw_background = settings.ComplicationBackgroundColor.argb != settings.BackgroundColor.argb;
 
   if (!draw_border && !draw_background)
     return;
@@ -1041,7 +943,7 @@ static void draw_complication_border_bg(FContext *fctxp, GPoint center) {
 
     graphics_draw_circle(fctxp->gctx, center, radius);
 
-    if (settings.ShadowOn && settings.ComplicationShadowColor.argb != settings.BackgroundColor1.argb) {
+    if (settings.ShadowOn && settings.ComplicationShadowColor.argb != settings.BackgroundColor.argb) {
       GRect shadow_rect = GRect(center.x - radius, center.y - radius + 1, 2 * radius, 2 * radius);
       graphics_context_set_stroke_color(fctxp->gctx, settings.ComplicationShadowColor);
       graphics_draw_arc(fctxp->gctx, shadow_rect, GOvalScaleModeFitCircle, TRIG_QUARTER_ANGLE, TRIG_HALF_ANGLE + TRIG_QUARTER_ANGLE);
@@ -1257,6 +1159,20 @@ static void render_date_fctx(FContext *fctxp, int angle_native) {
   fctx_end_fill(fctxp);
 }
 
+static void render_battery_line(GContext *ctx, int angle_native, int battery_level) {
+  int width_rect = (battery_level * config.battery_line) / 100;
+  int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
+  int dialWindowAdj = settings.ShowWatchDialWindow ? config.ComplicationDialWindowDistanceAdj : 0;
+  GPoint line_center = polar_to_point_native(angle_native, bounds.size.w/4 + config.ComplicationDistanceAdj - orbitadj + dialWindowAdj);
+  line_center.x += bounds.size.w / 2;
+  line_center.y += bounds.size.h / 2;
+
+  GRect BatteryLineRect = GRect(line_center.x - width_rect/2, line_center.y, width_rect, 2);
+  graphics_context_set_antialiased(ctx, true);
+  graphics_context_set_fill_color(ctx, settings.BatteryLineColor);
+  graphics_fill_rect(ctx,BatteryLineRect, 1, GCornersBottom);  
+}
+
 static inline int get_base_angle() {
   const int top_angle = -TRIG_QUARTER_ANGLE;
   return settings.OrbitComplications ? hand_angle_native : top_angle;
@@ -1287,66 +1203,23 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
 
     char* currSetting = *setting;
 
-    if (strcmp(currSetting, "hr") == 0) {
+    if (strncmp(currSetting, "hr", 3) == 0) {
       render_hour_digits_fctx(&fctx, *curr_angle);
-    } else if(strcmp(currSetting, "lo") == 0) {
+    } else if(strncmp(currSetting, "lo", 3) == 0) {
       render_logo_battery_fctx(&fctx, *curr_angle);
-    } else if (strcmp(currSetting, "dt") == 0) {
+      if (settings.EnableBatteryLine) {
+        render_battery_line(fctx.gctx, *curr_angle, battery_state_service_peek().charge_percent);
+      }
+    } else if (strncmp(currSetting, "dt", 3) == 0) {
       if (settings.EnableDate)
         render_date_fctx(&fctx, *curr_angle);
-    } else if (strcmp(currSetting, "ap") == 0) {
+    } else if (strncmp(currSetting, "ap", 3) == 0) {
       if (!clock_is_24h_style())
         render_ampm_fctx(&fctx, *curr_angle);
     }
   }
 
   fctx_deinit_context(&fctx);
-}
-
-static void render_battery_line(GContext *ctx, int angle_native, int s_battery_level) {
-  int width_rect = (s_battery_level * config.battery_line) / 100;
-  int orbitadj = settings.OrbitComplications ? config.ComplicationOrbitSizeAdj : 0;
-  int dialWindowAdj = settings.ShowWatchDialWindow ? config.ComplicationDialWindowDistanceAdj : 0;
-  GPoint line_center = polar_to_point_native(angle_native, bounds.size.w/4 + config.ComplicationDistanceAdj - orbitadj + dialWindowAdj);
-  line_center.x += bounds.size.w / 2;
-  line_center.y += bounds.size.h / 2;
-
-  GRect BatteryLineRect = GRect(line_center.x - width_rect/2, line_center.y, width_rect, 2);
-  graphics_context_set_antialiased(ctx, true);
-  graphics_context_set_fill_color(ctx, settings.BatteryLineColor);
-  graphics_fill_rect(ctx,BatteryLineRect, 1, GCornersBottom);  
-}
-
-static void layer_update_proc_battery_line(Layer *layer, GContext *ctx) {
-  // If neither element is enabled in config, stop.
-  if (!settings.EnableBattery && !settings.EnableBatteryLine) {
-      return;
-  }
-  if (skip_render_complications())
-    return;
-
-  int s_battery_level = battery_state_service_peek().charge_percent;
-
-  int base_angle = get_base_angle();
-
-  // Draw battery line
-  int startidx = settings.OrbitComplications ? 1 : 0;
-  char* compSettings[] = { settings.PosTop, settings.PosRight, settings.PosBottom, settings.PosLeft, NULL };
-  int side_angle = settings.OrbitComplications ? TRIG_7_32_ANGLE : TRIG_QUARTER_ANGLE;
-  int angles[] = { base_angle, base_angle + side_angle, base_angle + TRIG_HALF_ANGLE, base_angle - side_angle, 0 };
-  int *curr_angle = &angles[startidx];
-  for (char** setting = compSettings + startidx;
-      *setting;
-      curr_angle++, setting++) {
-
-    char* currSetting = *setting;
-
-    if (strcmp(currSetting, "lo") == 0) {
-      if (settings.EnableBatteryLine) {
-        render_battery_line(ctx, *curr_angle, s_battery_level);
-      }
-    }
-  }
 }
 
 int calculate_hand_angle(struct tm *prv_tm) {
@@ -1375,21 +1248,21 @@ static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx) {
           bounds.size.w/2 - config.analogue_hand_a,
           settings.BackLen,
           settings.MinutesHandColor);
-      draw_hand_center(ctx, settings.MinutesHandColor, settings.BackgroundColor1);
+      draw_hand_center(ctx, settings.MinutesHandColor, settings.BackgroundColor);
   #else
       if(settings.ForegroundShape){
           draw_line_hand(ctx, hand_angle_native,
               bounds.size.w/2 - config.analogue_hand_a,
               settings.BackLen,
               settings.MinutesHandColor);
-          draw_hand_center(ctx, settings.MinutesHandColor, settings.BackgroundColor1);
+          draw_hand_center(ctx, settings.MinutesHandColor, settings.BackgroundColor);
       }
       else{
           draw_line_hand(ctx, hand_angle_native,
               bounds.size.w/2 - config.analogue_hand_c,
               settings.BackLen,
               settings.MinutesHandColor);
-          draw_hand_center(ctx, settings.MinutesHandColor, settings.BackgroundColor1);
+          draw_hand_center(ctx, settings.MinutesHandColor, settings.BackgroundColor);
       }
   #endif
 
@@ -1407,7 +1280,7 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
   GRect Background = GRect(0, 0, bounds.size.w, bounds.size.h);
   int window_start_angle = 0, window_end_angle = 0, window_thickness = 0;
 
-  graphics_context_set_fill_color(ctx, settings.BackgroundColor1);
+  graphics_context_set_fill_color(ctx, settings.BackgroundColor);
   graphics_fill_rect(ctx, Background,0,GCornersAll);
 
   if (settings.ShowWatchDialWindow && (settings.showMinorTick || settings.showMajorTick)) {
@@ -1529,7 +1402,6 @@ static void prv_window_load(Window *window) {
   //create layers
   s_bg_layer = layer_create(bounds);
   s_alarm_cal_pin_layer = layer_create(bounds);
-  s_canvas_battery = layer_create(bounds);
   s_canvas_layer = layer_create(bounds);
   s_date_battery_logo_layer = layer_create(bounds);
 
@@ -1537,7 +1409,6 @@ static void prv_window_load(Window *window) {
   layer_add_child(window_layer, s_bg_layer); //backforound, circles, major tick shoadow &tickmask
   layer_add_child(window_layer, s_alarm_cal_pin_layer);
   layer_add_child(window_layer, s_date_battery_logo_layer); //fctx version of text
-  layer_add_child(window_layer, s_canvas_battery); //battery line
   layer_add_child(window_layer, s_canvas_layer);  //hour and minute hands
  
   bluetooth_vibe_icon(connection_service_peek_pebble_app_connection());
@@ -1545,7 +1416,6 @@ static void prv_window_load(Window *window) {
   layer_set_update_proc(s_bg_layer, bg_update_proc);
   layer_set_update_proc(s_alarm_cal_pin_layer, layer_update_proc_alarm_cal_pins);
   layer_set_update_proc(s_date_battery_logo_layer, update_logo_date_battery_fctx_layer);
-  layer_set_update_proc(s_canvas_battery, layer_update_proc_battery_line);
   layer_set_update_proc(s_canvas_layer, hour_min_hands_canvas_update_proc);
 
   // Request an alarm/calendar re-sync on load if the stored data is stale.
@@ -1569,7 +1439,6 @@ static void prv_window_unload(Window *window) {
   layer_destroy(s_canvas_layer);
   layer_destroy(s_alarm_cal_pin_layer);
   layer_destroy(s_bg_layer);
-  layer_destroy(s_canvas_battery);
   layer_destroy(s_date_battery_logo_layer);
   ffont_destroy(Date_Font);
   ffont_destroy(FontBTQTIconsFctx);

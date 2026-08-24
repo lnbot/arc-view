@@ -343,7 +343,7 @@ module.exports = [
       {
         "type": "color",
         "label": "Background Colour",
-        "messageKey": "BackgroundColor1",
+        "messageKey": "BackgroundColor",
         "defaultValue": "FFFFFF"
       },
       {
@@ -376,7 +376,7 @@ module.exports = [
       },
       {
         "type": "color",
-        "label": "Minute Hand Shadow Colour",
+        "label": "Hand Shadow Colour",
         "messageKey": "MinuteHandShadowColor",
         "defaultValue": "AAAAAA"
       },
@@ -400,6 +400,12 @@ module.exports = [
       },
       {
         "type": "color",
+        "label": "Minute Digits Colour",
+        "messageKey": "MinuteDigitsColor",
+        "defaultValue": "FFFFFF"
+      },
+      {
+        "type": "color",
         "label": "Hours Digits Colour",
         "messageKey": "HourDigitsColor",
         "defaultValue": "FFFFFF"
@@ -408,6 +414,12 @@ module.exports = [
         "type": "color",
         "label": "Minute Hand Colour",
         "messageKey": "MinutesHandColor",
+        "defaultValue": "FFFFFF"
+      },
+      {
+        "type": "color",
+        "label": "Hour Hand Colour",
+        "messageKey": "HourHandColor",
         "defaultValue": "FFFFFF"
       },
       {

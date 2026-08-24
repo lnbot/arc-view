@@ -1,22 +1,50 @@
 #pragma once
 #include <pebble.h>
+#include "persist_keys.h"
 
-// #define MODEL_COUNT 9
-#define SETTINGS_KEY 125
+#define SETTINGS_VERSION 1
 
+// Increment SETTINGS_VERSION when reordering or removing any members.
+// Do not change SETTINGS_VERSION if just adding new members to the end
 typedef struct ClaySettings {
-  //bool EnableSecondsHand;
-  //bool EnableSecondsAlways;
-  //int SecondsVisibleTime;
+  int version;
+  int CentreSize;
+  int InnerCentreSize;
+  int HandThickness;
+  int BackSize;
+  int BackLen;
+  int ComplicationFontSizeAdj;
+  int MinuteHandUpdateIntervalSec;
   char PosLeft[4];
   char PosRight[4];
   char PosTop[4];
   char PosBottom[4];
+
+  GColor SyncedAlarmPinColor;
+  GColor CalendarPinColor;
+  GColor BackgroundColor;
+  GColor ComplicationBorderColor;
+  GColor ComplicationShadowColor;
+  GColor MinuteHandShadowColor;
+  GColor MinorTickColor;
+  GColor MajorTickColor;
+  GColor DateColor;
+  GColor HourDigitsColor;
+  GColor MinuteDigitsColor;
+  GColor HourHandColor;
+  GColor MinutesHandColor;
+  GColor BatteryLineColor;
+  GColor BTQTColor;
+  GColor WatchDialWindowColor;
+  GColor MinimizedMajorTickColor;
+  GColor ComplicationBackgroundColor;
+  GColor LocalAlarmPinColor;
+
+  char LogoText[18];
   bool EnableDate;
   bool EnableBattery;
   bool EnableBatteryLine;
   bool EnableLogo;
-  char LogoText[18];
   bool VibeOn;
   bool AddZero12h;
   bool RemoveZero24h;
@@ -25,53 +53,19 @@ typedef struct ClaySettings {
   bool showMajorTick;
   bool DigitalHour;
   bool SmoothMinuteHand;
-  int MinuteHandUpdateIntervalSec;
   bool OrbitComplications;
   bool EnableAlarmCalendarSync;
-  GColor SyncedAlarmPinColor;
-  GColor CalendarPinColor;
-  int Font;
-  int CentreSize;
-  int InnerCentreSize;
-  int HandThickness;
-  int BackSize;
-  int BackLen;
-  char _BWThemeSelect[4];
-  char ThemeSelect[4];
-  GColor BackgroundColor1;
-  GColor ComplicationBorderColor;
-  GColor ComplicationShadowColor;
-  GColor MinuteHandShadowColor;
-  GColor TextColor1;
-  GColor MinorTickColor;
-  GColor TextColor3;
-  GColor MajorTickColor;
-  GColor DateColor;
-  GColor _BWDateColor;
-  GColor HourDigitsColor;
-  GColor HoursHandBorderColor;
-  GColor MinutesHandColor;
-  GColor MinutesHandBorderColor;
-  GColor SecondsHandColor;
-  GColor BatteryLineColor;
-  GColor _BWBackgroundColor1;
-  GColor _BWMinuteHandShadowColor;
-  GColor _BWMinHandBatLineColor;
-  GColor _BWHourDigitsColor;
-  GColor _BWMajorTickColor;
-  GColor BTQTColor;
-  GColor _BWBTQTColor;
   bool BWShadowOn;
   bool ShadowOn;
   bool ForegroundShape;
-  int ComplicationFontSizeAdj;
   bool TimelineAlarmPin;
   bool TimelineTimerPin;
   bool ShowWatchDialWindow;
-  GColor WatchDialWindowColor;
-  GColor MinimizedMajorTickColor;
-  GColor ComplicationBackgroundColor;
-  GColor LocalAlarmPinColor;
   bool BlankFaceMode;
   bool QuietTimeBlankFace;
-} __attribute__((__packed__)) ClaySettings;
+} ClaySettings;
+
+typedef struct {
+  size_t size;
+  uint8_t dictionary[1];
+} PersistDictionary;
