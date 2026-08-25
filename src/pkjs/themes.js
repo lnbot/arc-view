@@ -1,5 +1,5 @@
 const BuiltinThemes = {
-  version: 2,
+  version: 1,
   themes: {
     blue: {
       name: "Blue-gray background",
@@ -44,6 +44,28 @@ const BuiltinThemes = {
       SyncedAlarmPinColor: "BulgarianRose",
       CalendarPinColor: "WindsorTan",
       WatchDialWindowColor: "ElectricBlue",
+    },
+    barewhite: {
+      name: "Bare White",
+      BackgroundColor: "White",
+      ComplicationBorderColor: "LightGray",
+      ComplicationBackgroundColor: "White",
+      ComplicationShadowColor: "DarkGray",
+      DateColor: "Black",
+      MinuteDigitsColor: "BulgarianRose",
+      HourDigitsColor: "OxfordBlue",
+      MinutesHandColor: "BulgarianRose",
+      HourHandColor: "OxfordBlue",
+      MinuteHandShadowColor: "LightGray",
+      MajorTickColor: "Black",
+      MinimizedMajorTickColor: "White",
+      MinorTickColor: "Black",
+      BatteryLineColor: "IslamicGreen",
+      BTQTColor: "Black",
+      LocalAlarmPinColor: "DukeBlue",
+      SyncedAlarmPinColor: "DarkCandyAppleRed",
+      CalendarPinColor: "MidnightGreen",
+      WatchDialWindowColor: "White",
     },
     green: {
       name: "Green background",
