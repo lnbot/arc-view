@@ -36,26 +36,13 @@ GPoint add_points(GPoint a, GPoint b) {
 // Converts an angle and a distance to a cartesian point.
 GPoint polar_to_point_native(int angle_native, int distance) {
   // Use to get a rounded result
-  int x = (distance * cos_lookup(angle_native) + TRIG_HALF_ANGLE) / TRIG_MAX_ANGLE;
-  int y = (distance * sin_lookup(angle_native) + TRIG_HALF_ANGLE) / TRIG_MAX_ANGLE;
+  int x = (distance * sin_lookup(angle_native) + TRIG_HALF_ANGLE) / TRIG_MAX_ANGLE;
+  int y = (distance * -cos_lookup(angle_native) + TRIG_HALF_ANGLE) / TRIG_MAX_ANGLE;
   return GPoint(x, y);
-}
-
-// Converts an angle and a distance to a cartesian point.
-GPoint polar_to_point(int angle, int distance) {
-  return polar_to_point_native(DEG_TO_TRIGANGLE(angle), distance);
 }
 
 GPoint polar_to_point_offset_native(GPoint offset, int angle_native, int distance) {
   return add_points(offset, polar_to_point_native(angle_native, distance));
-}
-
-GPoint polar_to_point_offset(GPoint offset, int angle, int distance) {
-  return add_points(offset, polar_to_point(angle, distance));
-}
-
-double slope_from_two_points(GPoint a, GPoint b) {
-  return (double)(b.y - a.y) / (double)(b.x - a.x);
 }
 
 // ---------------------------------------------------------------------------
@@ -64,8 +51,8 @@ double slope_from_two_points(GPoint a, GPoint b) {
 
 GPoint angle_to_rect_edge_native(GPoint center, int angle_native, GRect r) {
   int32_t angle = angle_native;
-  int32_t dx = cos_lookup(angle);
-  int32_t dy = sin_lookup(angle);
+  int32_t dx = sin_lookup(angle);
+  int32_t dy = -cos_lookup(angle);
   int32_t t = INT32_MAX;
   if (dx > 0) { int32_t v = ((r.origin.x + r.size.w - 1 - center.x) * TRIG_MAX_RATIO) / dx; if (v < t) t = v; }
   else if (dx < 0) { int32_t v = ((r.origin.x - center.x) * TRIG_MAX_RATIO) / dx; if (v < t) t = v; }
@@ -75,15 +62,10 @@ GPoint angle_to_rect_edge_native(GPoint center, int angle_native, GRect r) {
                 center.y + (dy * t / TRIG_MAX_RATIO));
 }
 
-GPoint angle_to_rect_edge(GPoint center, int angle_deg, GRect r) {
-  int32_t angle = DEG_TO_TRIGANGLE(angle_deg);
-  return angle_to_rect_edge_native(center, angle, r);
-}
-
 GPoint angle_to_rounded_rect_edge_native(GPoint center, int angle_native, int half_w, int half_h, int r) {
   int32_t angle = angle_native;
-  int32_t dx = cos_lookup(angle);
-  int32_t dy = sin_lookup(angle);
+  int32_t dx = sin_lookup(angle);
+  int32_t dy = -cos_lookup(angle);
 
   int32_t dx16 = (dx + 32) >> 6;
   int32_t dy16 = (dy + 32) >> 6;
@@ -121,18 +103,6 @@ GPoint angle_to_rounded_rect_edge_native(GPoint center, int angle_native, int ha
   }
 
   return GPoint(center.x + px, center.y + py);
-}
-
-GPoint angle_to_rounded_rect_edge(GPoint center, int angle_deg, int half_w, int half_h, int r) {
-  int32_t angle = DEG_TO_TRIGANGLE(angle_deg);
-  return angle_to_rounded_rect_edge_native(center, angle, half_w, half_h, r);
-}
-
-GPoint point_from_edge(GPoint origin, int angle_deg, GRect r, int inset) {
-    GPoint edge = angle_to_rect_edge(origin, angle_deg, r);
-    int32_t angle = DEG_TO_TRIGANGLE(angle_deg);
-    return GPoint(edge.x - (int)((cos_lookup(angle) * inset) / TRIG_MAX_RATIO), 
-                  edge.y - (int)((sin_lookup(angle) * inset) / TRIG_MAX_RATIO));
 }
 
 int modulus(int a, int b) {

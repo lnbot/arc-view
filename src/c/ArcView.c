@@ -756,10 +756,10 @@ static void draw_event_pin(GContext *ctx, int hour, int minute, int second, GCol
   static const int pin_length = 13; // Halfway between major and minor tick lengths with room for an outline
   static const int pin_half_angle = DEG_TO_TRIGANGLE(35); // Half of the angle for the pin's width
 
+  // Angle from the center of the screen to the pin
   int angle_native = use_minute_hand() ?
-    (TRIG_MAX_ANGLE * minute / 60) + (TRIG_MAX_ANGLE * second / 3600) - TRIG_QUARTER_ANGLE :
-    (TRIG_MAX_ANGLE * hour / 12) + (TRIG_MAX_ANGLE * minute / 720) + (TRIG_MAX_ANGLE * second / (12 * 60 * 60)) - TRIG_QUARTER_ANGLE;
-  int pin_center_angle = angle_native - TRIG_QUARTER_ANGLE;
+    (TRIG_MAX_ANGLE * minute / 60) + (TRIG_MAX_ANGLE * second / 3600) :
+    (TRIG_MAX_ANGLE * hour / 12) + (TRIG_MAX_ANGLE * minute / 720) + (TRIG_MAX_ANGLE * second / (12 * 60 * 60));
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
   GPoint edge;
 
@@ -776,13 +776,14 @@ static void draw_event_pin(GContext *ctx, int hour, int minute, int second, GCol
 
   GRect pin_rect = GRect(edge.x - pin_length, edge.y - pin_length, pin_length * 2, pin_length * 2);
 
+  // The pin shapes are drawn back towards the center of the watchface
+  int adj_pin_angle = angle_native - TRIG_HALF_ANGLE;
   graphics_context_set_antialiased(ctx, true);
   graphics_context_set_fill_color(ctx, color);
   graphics_fill_radial(ctx, pin_rect, GOvalScaleModeFitCircle, pin_length,
-     pin_center_angle - pin_half_angle, pin_center_angle + pin_half_angle);
+     adj_pin_angle - pin_half_angle, adj_pin_angle + pin_half_angle);
 
   // Draw contrasting highlights around the pin
-  int adj_pin_angle = pin_center_angle - TRIG_QUARTER_ANGLE;
   graphics_context_set_stroke_color(ctx, get_contrasting_color(color));
   graphics_context_set_stroke_width(ctx, 1);
   GPoint highlightpt = polar_to_point_offset_native(edge, adj_pin_angle - pin_half_angle, pin_length);
@@ -790,7 +791,7 @@ static void draw_event_pin(GContext *ctx, int hour, int minute, int second, GCol
   highlightpt = polar_to_point_offset_native(edge, adj_pin_angle + pin_half_angle, pin_length);
   graphics_draw_line(ctx, edge, highlightpt);
   graphics_context_set_stroke_width(ctx, 2);
-  graphics_draw_arc(ctx, pin_rect, GOvalScaleModeFitCircle, pin_center_angle - pin_half_angle, pin_center_angle + pin_half_angle);
+  graphics_draw_arc(ctx, pin_rect, GOvalScaleModeFitCircle, adj_pin_angle - pin_half_angle, adj_pin_angle + pin_half_angle);
 }
 
 static void draw_event_arc(GContext *ctx, int hour1, int minute1, int second1, int hour2, int minute2, int second2, GColor color) {
@@ -913,8 +914,6 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
 }
 
 static void draw_radial_line(GContext *ctx, int angle_native, int length, GColor border_color) {
-  // Pebble SDK draw angles are offset by 90 degrees compared to ours, so keep it consistent here
-  angle_native -= TRIG_QUARTER_ANGLE;
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
   GPoint p1 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 );
   GPoint p2 = polar_to_point_offset_native(origin, angle_native, bounds.size.h / 2 - length);
@@ -1306,13 +1305,13 @@ int calculate_hand_angle(struct tm *prv_tm) {
   int angle;
 
   if (use_minute_hand()) {
-    angle = (TRIG_MAX_ANGLE * prv_tm->tm_min / 60) - TRIG_QUARTER_ANGLE;
+    angle = (TRIG_MAX_ANGLE * prv_tm->tm_min / 60);
     
     if (settings.SmoothMinuteHand) {
       angle += TRIG_MAX_ANGLE * prv_tm->tm_sec / 60 / 60;  // Sweep 1/60 of a circle over 60s
     }
   } else {
-    angle = (TRIG_MAX_ANGLE * (prv_tm->tm_hour % 12) / 12) + (TRIG_MAX_ANGLE * prv_tm->tm_min / 60 / 12) - TRIG_QUARTER_ANGLE;
+    angle = (TRIG_MAX_ANGLE * (prv_tm->tm_hour % 12) / 12) + (TRIG_MAX_ANGLE * prv_tm->tm_min / 60 / 12);
   }
 
   return angle;
@@ -1362,8 +1361,8 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
   graphics_fill_rect(ctx, Background,0,GCornersAll);
 
   if (settings.ShowWatchDialWindow && (settings.showMinorTick || settings.showMajorTick)) {
-    window_start_angle = hand_angle_native - (DIAL_WINDOW_SWEEP_ANGLE / 2) + TRIG_QUARTER_ANGLE;
-    window_end_angle = hand_angle_native + (DIAL_WINDOW_SWEEP_ANGLE / 2) + TRIG_QUARTER_ANGLE;
+    window_start_angle = hand_angle_native - (DIAL_WINDOW_SWEEP_ANGLE / 2);
+    window_end_angle = hand_angle_native + (DIAL_WINDOW_SWEEP_ANGLE / 2);
     window_thickness = bounds.size.h * 5 / 32 + 1;
 
     // Draw the actual window and outline
@@ -1396,7 +1395,7 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
 
     for (int i = tick_start; i <= tick_end; i++) {
       // Angles are cyclical so it doesn't matter if i is in the range 0..59
-      int angle_native = i * TRIG_MAX_ANGLE / num_ticks - TRIG_QUARTER_ANGLE;
+      int angle_native = i * TRIG_MAX_ANGLE / num_ticks;
       draw_minor_tick(ctx, angle_native, settings.MinorTickColor);
     }
   }
@@ -1413,7 +1412,7 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
     }
 
     for (int i = 0; i < 12; i++) {
-      int angle_native = i * TRIG_MAX_ANGLE / 12 - TRIG_QUARTER_ANGLE;
+      int angle_native = i * TRIG_MAX_ANGLE / 12;
       int tick_length = 16; // Length of the major tick
       GColor tick_color = (i == 6 || i == 12 || i == 3 || i == 9 || i == 0) ? settings.MajorTickColor : settings.MinorTickColor;
 
