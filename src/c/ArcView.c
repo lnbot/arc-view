@@ -10,11 +10,6 @@
 #include <pebble-fctx/fpath.h>
 #include <pebble-fctx/ffont.h>
 
-// Turns out using ticks and quick returning on 90% of callbacks is still
-// more battery efficient than using app timer
-//#define SUB_MINUTE_USE_APPTIMER
-#define SUB_MINUTE_USE_TICK
-
 //#define LOG_HEAP_STATS
 #ifdef LOG_HEAP_STATS
 #define HEAP_LOG(tag) { APP_LOG(APP_LOG_LEVEL_INFO, "TAG[%s] heap free=%d, used=%d", tag, heap_bytes_free(), heap_bytes_used()); }
@@ -40,18 +35,13 @@ static struct tm *prv_tick_time = &prv_tm;
 static int current_date;
 static int s_weekday;
 static int seconds;
+static int sub_minute_interval;
 static int minutes;
 static int hours;   //12h modulo
 static int s_hours; //24h version
 static int hand_angle_native;
 
 static ClaySettings settings;
-
-#ifdef SUB_MINUTE_USE_APPTIMER
-static AppTimer *sub_minute_timer = NULL;
-#elif defined(SUB_MINUTE_USE_TICK)
-static int sub_minute_interval;
-#endif
 
 // Date position struct for different platforms
 typedef struct {
@@ -164,9 +154,6 @@ static bool prv_restore_from_settings_dict(void);
 static bool prv_parse_settings_dict(DictionaryIterator* iter);
 static void prv_inbox_received_handler(DictionaryIterator *iter, void *context);
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed);
-#if defined(SUB_MINUTE_USE_APPTIMER)
-static void apptimer_handler(void *data);
-#endif
 static void bg_update_proc(Layer *layer, GContext *ctx);
 static void update_logo_date_battery_fctx_layer(Layer *layer, GContext * ctx);
 static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx);
@@ -572,15 +559,8 @@ static bool prv_parse_settings_dict(DictionaryIterator *iter) {
     settings.SmoothMinuteHand = settings.DigitalHour && updates > 1;
     settings.MinuteHandUpdateIntervalSec = (60 + updates / 2) / updates;
 
-#if defined(SUB_MINUTE_USE_APPTIMER)
-    if (settings.SmoothMinuteHand) {
-      sub_minute_timer = app_timer_register(1000 * settings.MinuteHandUpdateIntervalSec, apptimer_handler, NULL);
-    }
-    tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
-#elif defined(SUB_MINUTE_USE_TICK)
     tick_timer_service_subscribe((use_minute_hand() && settings.SmoothMinuteHand) ?
       SECOND_UNIT : MINUTE_UNIT, tick_handler);
-#endif
 
     settings_changed = true;
   }
@@ -617,14 +597,6 @@ static bool prv_parse_settings_dict(DictionaryIterator *iter) {
   return settings_changed;
 }
 
-#if defined(SUB_MINUTE_USE_APPTIMER)
-static void apptimer_handler(void *data) {
-  sub_minute_timer = NULL;
-  time_t tm = time(NULL);
-  tick_handler(localtime(&tm), SECOND_UNIT);
-}
-#endif
-
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   
   //APP_LOG(APP_LOG_LEVEL_DEBUG, "tick_handler fired: %02d:%02d:%02d", tick_time->tm_hour, tick_time->tm_min, tick_time->tm_sec);
@@ -632,22 +604,16 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   memcpy(prv_tick_time, tick_time, sizeof(struct tm));
   bool minute_changed = units_changed & MINUTE_UNIT;
 
-#if defined(SUB_MINUTE_USE_TICK)
   bool process_sub_min_tick = false;
   if (settings.SmoothMinuteHand && units_changed & SECOND_UNIT) {
     int new_interval = prv_tick_time->tm_sec / settings.MinuteHandUpdateIntervalSec;
     process_sub_min_tick = new_interval != sub_minute_interval;
   }
-#elif defined(SUB_MINUTE_USE_APPTIMER)
-  bool process_sub_min_tick = settings.SmoothMinuteHand && units_changed & SECOND_UNIT;
-#endif
 
   // Update hour and minute hands and the date on minute change
   if (minute_changed || process_sub_min_tick) {
     seconds = tick_time->tm_sec;
-    #if defined(SUB_MINUTE_USE_TICK)
     sub_minute_interval = tick_time->tm_sec / settings.MinuteHandUpdateIntervalSec;
-    #endif
     minutes = tick_time->tm_min;
     hours = tick_time->tm_hour % 12;
     s_hours = tick_time->tm_hour;
@@ -666,13 +632,6 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
       current_date = tick_time->tm_mday;
       s_weekday = tick_time->tm_wday;
     }
-
-    #if defined(SUB_MINUTE_USE_APPTIMER)
-    if (settings.SmoothMinuteHand && (seconds + settings.MinuteHandUpdateIntervalSec) < 60) {
-      // Schedule a timer for smooth minute hand movement unless the next callback is a minute tick
-      sub_minute_timer = app_timer_register(1000 * settings.MinuteHandUpdateIntervalSec, apptimer_handler, NULL);
-    }
-    #endif
 
     // Periodically check whether the alarm/calendar data needs a re-sync.
     if (minute_changed)
@@ -1428,7 +1387,6 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
   }
 }
 
-
 static void prv_window_load(Window *window) {
   time_t temp = time(NULL);
   struct tm *tick_time = localtime(&temp);
@@ -1436,9 +1394,7 @@ static void prv_window_load(Window *window) {
   current_date = prv_tick_time->tm_mday;
   s_weekday = prv_tick_time->tm_wday;
   seconds = prv_tick_time->tm_sec;
-  #if defined(SUB_MINUTE_USE_TICK)
   sub_minute_interval = settings.SmoothMinuteHand ? prv_tick_time->tm_sec / settings.MinuteHandUpdateIntervalSec : 0;
-  #endif
   minutes = prv_tick_time->tm_min;
   hours = prv_tick_time->tm_hour % 12;
   s_hours = prv_tick_time->tm_hour;
@@ -1465,16 +1421,9 @@ static void prv_window_load(Window *window) {
   connection_service_subscribe((ConnectionHandlers){
     .pebble_app_connection_handler = bluetooth_vibe_icon
   });
-
-#if defined(SUB_MINUTE_USE_APPTIMER)
-  sub_minute_timer = app_timer_register_(1000 * settings.MinuteHandUpdateIntervalSec, apptimer_handler, NULL);
-  tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
-
-#elif defined (SUB_MINUTE_USE_TICK)
   // Watchface is restarted when quiet time toggles so this is sufficient for QTBlankFace
   tick_timer_service_subscribe((use_minute_hand() && settings.SmoothMinuteHand) ?
     SECOND_UNIT : MINUTE_UNIT, tick_handler);
-#endif
 
   //create layers
   s_bg_layer = layer_create(bounds);
@@ -1505,13 +1454,6 @@ static void prv_window_unload(Window *window) {
   connection_service_unsubscribe();
   battery_state_service_unsubscribe();
   tick_timer_service_unsubscribe();
-
-#if defined(SUB_MINUTE_USE_APPTIMER)
-  if (sub_minute_timer) {
-    app_timer_cancel(sub_minute_timer);
-    sub_minute_timer = NULL;
-  }
-#endif
 
   layer_destroy(s_canvas_layer);
   layer_destroy(s_alarm_cal_pin_layer);
