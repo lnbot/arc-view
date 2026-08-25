@@ -1,0 +1,23 @@
+# Do nothing if executed directly
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+
+TARGET=${TARGET:-}
+TARGET_ARG=""
+TARGET_TYPE="default"
+
+# IP address.  We're sending to a real device.
+if [[ "${TARGET}" =~ ([0-9]{1,3}\.){3}[0-9]{1,3} ]]; then
+  TARGET_ARG="--phone ${TARGET}"
+  TARGET_TYPE="phone"
+elif [[ ! -z "${TARGET}" ]]; then
+  TARGET_ARG="--emulator ${TARGET}"
+  TARGET_TYPE="emulator"
+else
+  TARGET="current emulator"
+fi
+
+if [[ ! -z "${SCRIPT_TAG}" ]]; then
+  echo "* ${SCRIPT_TAG} target: ${TARGET} (${TARGET_TYPE})"
+fi
+
+fi

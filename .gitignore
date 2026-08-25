@@ -3,5 +3,6 @@
 /_*/
 /build
 /node_modules
+/scripts/**/*.local
 /package-lock.json
 *.swp
