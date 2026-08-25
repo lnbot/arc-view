@@ -40,6 +40,7 @@ static int minutes;
 static int hours;   //12h modulo
 static int s_hours; //24h version
 static int hand_angle_native;
+static time_t s_hold_time;  // If set, hold the time here
 
 static ClaySettings settings;
 
@@ -304,9 +305,14 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   prv_parse_settings_dict(iter);
 
   size_t size = (char *)iter->end - (char *)iter->dictionary;
-  persist_write_data(SETTINGS_DICT_SIZE_KEY, &size, sizeof(size));
-  persist_write_data_multi(SETTINGS_DICT_KEY, iter->dictionary, size, SETTINGS_DICT_MAX_BLOCKS);
-  //APP_LOG(APP_LOG_LEVEL_INFO, "Write settings dict size=%u", size);
+
+  if (size >= 128) {
+    // Smaller messages are probably just be test messages and shouldn't be saved.
+    // We shouldn't see this except in test/emulation environments.
+    persist_write_data(SETTINGS_DICT_SIZE_KEY, &size, sizeof(size));
+    persist_write_data_multi(SETTINGS_DICT_KEY, iter->dictionary, size, SETTINGS_DICT_MAX_BLOCKS);
+    //APP_LOG(APP_LOG_LEVEL_INFO, "Write settings dict size=%u", size);
+  }
 }
 
 static bool prv_restore_from_settings_dict() {
@@ -363,6 +369,18 @@ static bool prv_parse_settings_dict(DictionaryIterator *iter) {
       case EMSGKEY_XCLAYUserThemes:
         // This is a potentially massive blob, and it should be filtered out
         APP_LOG(APP_LOG_LEVEL_WARNING, "XCLAY message found.  This should not be sent to the watchface.");
+        break;
+      case EMSGKEY_TestSetTime:
+        int hold_time;
+        prv_set_int32(tuple, &hold_time);
+        s_hold_time = (time_t)hold_time;
+
+        // When we get a 0 hold time, just let the tick_handler() do time updates
+        if (s_hold_time) {
+          struct tm *lt = localtime(&s_hold_time);
+          memcpy(&prv_tm, lt, sizeof(prv_tm));
+        }
+        settings_changed = true;
         break;
 
       // Settings that need more than one tuple are saved for after the loop.
@@ -601,7 +619,12 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   
   //APP_LOG(APP_LOG_LEVEL_DEBUG, "tick_handler fired: %02d:%02d:%02d", tick_time->tm_hour, tick_time->tm_min, tick_time->tm_sec);
 
-  memcpy(prv_tick_time, tick_time, sizeof(struct tm));
+  if (s_hold_time) {
+    tick_time = prv_tick_time;
+  } else {
+    memcpy(prv_tick_time, tick_time, sizeof(struct tm));
+  }
+
   bool minute_changed = units_changed & MINUTE_UNIT;
 
   bool process_sub_min_tick = false;
@@ -617,10 +640,6 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
     minutes = tick_time->tm_min;
     hours = tick_time->tm_hour % 12;
     s_hours = tick_time->tm_hour;
-
-    #ifdef SHOW_MINUTE
-    prv_tm.tm_min = minutes = SHOW_MINUTE;
-    #endif
 
     hand_angle_native = calculate_hand_angle(prv_tick_time);
 
@@ -1398,10 +1417,6 @@ static void prv_window_load(Window *window) {
   minutes = prv_tick_time->tm_min;
   hours = prv_tick_time->tm_hour % 12;
   s_hours = prv_tick_time->tm_hour;
-
-  #ifdef SHOW_MINUTE
-  prv_tm.tm_min = minutes = SHOW_MINUTE;
-  #endif
 
   hand_angle_native = calculate_hand_angle(prv_tick_time);
 

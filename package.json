@@ -32,7 +32,7 @@
       "configurable"
     ],
     "messageKeys": [
-      "EnableSecondsHand",
+      "TestSetTime",
       "PosLeft",
       "PosTop",
       "PosRight",
