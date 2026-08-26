@@ -427,6 +427,7 @@ module.exports = function(minified) {
       setItemRequirements("LogoText", ["EnableLogo"]);
       setItemRequirements("DigitalHour", ["!BlankFaceMode", "QuietTimeBlankFace"], makeRequireAnyToggleFunc);
       setItemRequirements("QuietTimeBlankFace", ["BlankFaceMode"]);
+      setItemRequirements("HideUnlitMinimizedTicks", ["ShowWatchDialWindow"]);
 
       Themes.init(document);
 

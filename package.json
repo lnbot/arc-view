@@ -93,6 +93,7 @@
       "MinimizedMajorTickColor",
       "BlankFaceMode",
       "QuietTimeBlankFace",
+      "HideUnlitMinimizedTicks",
       "XCLAYUserThemes",
       "XCLAYActiveTheme"
     ],

@@ -1,5 +1,5 @@
 const BuiltinThemes = {
-  version: 1,
+  version: 2,
   themes: {
     blue: {
       name: "Blue-gray background",
@@ -58,7 +58,7 @@ const BuiltinThemes = {
       HourHandColor: "OxfordBlue",
       MinuteHandShadowColor: "LightGray",
       MajorTickColor: "Black",
-      MinimizedMajorTickColor: "White",
+      MinimizedMajorTickColor: "DarkGray",
       MinorTickColor: "Black",
       BatteryLineColor: "IslamicGreen",
       BTQTColor: "Black",

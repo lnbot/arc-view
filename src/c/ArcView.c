@@ -145,6 +145,7 @@ static const UIConfig config = {
 
 bool connected = true;
 time_t next_alarm_time = 0;
+bool backlight_on = false;
 
 //function prototypes
 
@@ -231,6 +232,7 @@ static void prv_default_settings(void) {
   settings.WatchDialWindowColor = GColorWhite;
   settings.BlankFaceMode = false;
   settings.QuietTimeBlankFace = false;
+  settings.HideUnlitMinimizedTicks = true;
 }
 
 static bool use_minute_hand() {
@@ -456,6 +458,9 @@ static bool prv_parse_settings_dict(DictionaryIterator *iter) {
         break;
       case EMSGKEY_QuietTimeBlankFace:
         settings_changed |= prv_set_bool(tuple, &settings.QuietTimeBlankFace);
+        break;
+      case EMSGKEY_HideUnlitMinimizedTicks:
+        settings_changed |= prv_set_bool(tuple, &settings.HideUnlitMinimizedTicks);
         break;
 
       // Integer settings.
@@ -1397,6 +1402,10 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
       if (settings.ShowWatchDialWindow &&
           ((!ends_reversed && (i < hr_start || i > hr_end)) ||
           (ends_reversed && (i < hr_start && i > hr_end)))) {
+
+        if (!backlight_on && settings.HideUnlitMinimizedTicks)
+          continue;
+
         tick_length = 8;  // major tick is smaller outside of the window
         tick_color = settings.MinimizedMajorTickColor;
       }
@@ -1404,6 +1413,13 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
       draw_major_tick(ctx, angle_native, tick_length, tick_color, tick_color);
     }
   }
+}
+
+static void backlight_handler(bool on) {
+  backlight_on = on;
+
+  if (settings.HideUnlitMinimizedTicks)
+    layer_mark_dirty(s_bg_layer);
 }
 
 static void prv_window_load(Window *window) {
@@ -1436,9 +1452,12 @@ static void prv_window_load(Window *window) {
   connection_service_subscribe((ConnectionHandlers){
     .pebble_app_connection_handler = bluetooth_vibe_icon
   });
+
   // Watchface is restarted when quiet time toggles so this is sufficient for QTBlankFace
   tick_timer_service_subscribe((use_minute_hand() && settings.SmoothMinuteHand) ?
     SECOND_UNIT : MINUTE_UNIT, tick_handler);
+
+  backlight_service_subscribe(backlight_handler);
 
   //create layers
   s_bg_layer = layer_create(bounds);
@@ -1466,6 +1485,7 @@ static void prv_window_load(Window *window) {
 
 static void prv_window_unload(Window *window) {
   accel_tap_service_unsubscribe();
+  backlight_service_unsubscribe();
   connection_service_unsubscribe();
   battery_state_service_unsubscribe();
   tick_timer_service_unsubscribe();

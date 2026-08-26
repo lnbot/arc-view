@@ -63,4 +63,5 @@ typedef struct ClaySettings {
   bool ShowWatchDialWindow;
   bool BlankFaceMode;
   bool QuietTimeBlankFace;
+  bool HideUnlitMinimizedTicks;
 } ClaySettings;

@@ -132,6 +132,13 @@ module.exports = [
         "defaultValue": true
       },
       {
+        "type": "toggle",
+        "label": "Hide Unlit Minimized Major Tickmarks",
+        "description": "Major tickmarks outside of the dial window are hidden unless backlight is on",
+        "messageKey": "HideUnlitMinimizedTicks",
+        "defaultValue": true
+      },
+      {
         "type": "slider",
         "label": "Complication Font Size Adjustment",
         "messageKey": "ComplicationFontSizeAdj",
@@ -394,7 +401,8 @@ module.exports = [
       },
       {
         "type": "color",
-        "label": "Minimized Major Tickmark Colour (outside of Watch Dial Window)",
+        "label": "Minimized Major Tickmark Colour",
+        "description": "Applies to major tickmarks outside the dial window",
         "messageKey": "MinimizedMajorTickColor",
         "defaultValue": "000000"
       },
