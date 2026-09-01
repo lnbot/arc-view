@@ -735,9 +735,16 @@ static void draw_hand_center(GContext *ctx, GColor outer_color, GColor inner_col
 
 }
 
+// Halfway between major and minor tick lengths with room for an outline
+#define PIN_LENGTH 13
 static void draw_event_pin(GContext *ctx, int hour, int minute, int second, GColor color) {
-  static const int pin_length = 13; // Halfway between major and minor tick lengths with room for an outline
   static const int pin_half_angle = DEG_TO_TRIGANGLE(35); // Half of the angle for the pin's width
+
+  // (3 / pin_length) radians for arc length 3 if pin radius is 13
+  // Then convert to native angle: 2 radians = TRIG_MAX_ANGLE
+  //   (3 / pin_length) * (TRIG_HALF_ANGLE / pi)
+  // And reorder the * and / to avoid bad int cancellation error.
+  static const int highlight_arc_half_angle = 3 * TRIG_HALF_ANGLE / PIN_LENGTH * 10000 / 31415 / 2;
 
   // Angle from the center of the screen to the pin
   int angle_native = use_minute_hand() ?
@@ -757,22 +764,23 @@ static void draw_event_pin(GContext *ctx, int hour, int minute, int second, GCol
   }
 #endif
 
-  GRect pin_rect = GRect(edge.x - pin_length, edge.y - pin_length, pin_length * 2, pin_length * 2);
+  GRect pin_rect = GRect(edge.x - PIN_LENGTH, edge.y - PIN_LENGTH, PIN_LENGTH * 2, PIN_LENGTH * 2);
 
   // The pin shapes are drawn back towards the center of the watchface
   int adj_pin_angle = angle_native - TRIG_HALF_ANGLE;
   graphics_context_set_antialiased(ctx, true);
   graphics_context_set_fill_color(ctx, color);
-  graphics_fill_radial(ctx, pin_rect, GOvalScaleModeFitCircle, pin_length,
+  graphics_fill_radial(ctx, pin_rect, GOvalScaleModeFitCircle, PIN_LENGTH,
      adj_pin_angle - pin_half_angle, adj_pin_angle + pin_half_angle);
 
   // Draw contrasting highlights around the pin
   graphics_context_set_stroke_color(ctx, get_contrasting_color(color));
-  graphics_context_set_stroke_width(ctx, 1);
-  GPoint highlightpt = polar_to_point_offset_native(edge, adj_pin_angle - pin_half_angle, pin_length);
-  graphics_draw_line(ctx, edge, highlightpt);
-  highlightpt = polar_to_point_offset_native(edge, adj_pin_angle + pin_half_angle, pin_length);
-  graphics_draw_line(ctx, edge, highlightpt);
+  graphics_context_set_fill_color(ctx, get_contrasting_color(color));
+  graphics_fill_radial(ctx, pin_rect, GOvalScaleModeFitCircle, PIN_LENGTH,
+     adj_pin_angle + pin_half_angle - highlight_arc_half_angle, adj_pin_angle + pin_half_angle + highlight_arc_half_angle);
+  graphics_fill_radial(ctx, pin_rect, GOvalScaleModeFitCircle, PIN_LENGTH,
+     adj_pin_angle - pin_half_angle - highlight_arc_half_angle, adj_pin_angle - pin_half_angle + highlight_arc_half_angle);
+
   graphics_context_set_stroke_width(ctx, 2);
   graphics_draw_arc(ctx, pin_rect, GOvalScaleModeFitCircle, adj_pin_angle - pin_half_angle, adj_pin_angle + pin_half_angle);
 }
@@ -792,7 +800,8 @@ static void draw_event_arc(GContext *ctx, int hour1, int minute1, int second1, i
   if (arc_end_angle <= arc_start_angle)
     arc_end_angle += TRIG_MAX_ANGLE;
 
-  GRect arc_bounds = GRect(arc_width, arc_width, bounds.size.w - 2 * arc_width, bounds.size.h - 2 * arc_width);
+  // Bigger bounding box to sure we draw all pixels around the edge of the screen
+  GRect arc_bounds = GRect(arc_width - 1, arc_width - 1, bounds.size.w - 2 * arc_width + 2, bounds.size.h - 2 * arc_width + 2);
 
   // Draw a filled arc, then a line of a contrasting color
   graphics_context_set_antialiased(ctx, true);
@@ -800,7 +809,8 @@ static void draw_event_arc(GContext *ctx, int hour1, int minute1, int second1, i
   graphics_context_set_stroke_color(ctx, get_contrasting_color(color));
   graphics_context_set_stroke_width(ctx, 1);
 
-  graphics_fill_radial(ctx, bounds, GOvalScaleModeFillCircle, arc_width, arc_start_angle, arc_end_angle);
+  // Extra arc width because of extra bounding box size
+  graphics_fill_radial(ctx, bounds, GOvalScaleModeFillCircle, arc_width + 1, arc_start_angle, arc_end_angle);
   graphics_draw_arc(ctx, arc_bounds, GOvalScaleModeFillCircle, arc_start_angle, arc_end_angle);
 }
 
@@ -871,9 +881,17 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
       struct tm *event_tm = localtime(&start_t);
       int start_hr = event_tm->tm_hour;
       int start_min = event_tm->tm_min;
-      int start_sec = event_tm->tm_sec;
+
+      // We want to force the start of the arc to be on a minute marker unless our minute hand is
+      // sweeping along mid-minute
+      int start_sec = (start_t == now) ? event_tm->tm_sec : 0;
+
       event_tm = localtime(&end_t);
-      draw_event_arc(ctx, start_hr, start_min, start_sec, event_tm->tm_hour, event_tm->tm_min, event_tm->tm_sec, settings.CalendarPinColor);
+
+      // ... and same for the end of the arc
+      int end_sec = (end_t == thresholdTime) ? event_tm->tm_sec : 0;
+
+      draw_event_arc(ctx, start_hr, start_min, start_sec, event_tm->tm_hour, event_tm->tm_min, end_sec, settings.CalendarPinColor);
     }
 
     if (draw_end) {
