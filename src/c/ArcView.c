@@ -226,6 +226,7 @@ static void prv_default_settings(void) {
   settings.LocalAlarmPinColor = GColorScreaminGreen;
   settings.SyncedAlarmPinColor = GColorBrilliantRose;
   settings.CalendarPinColor = GColorChromeYellow;
+  settings.CalendarEndPinColor = GColorChromeYellow;
   settings.TimelineAlarmPin = false;
   settings.TimelineTimerPin = false;
   settings.ShowWatchDialWindow = true;
@@ -273,8 +274,9 @@ static void prv_load_settings(void) {
   }
 
   // Fallback: incompatible native settings, but reparse the last received settings dict
+  APP_LOG(APP_LOG_LEVEL_INFO, "LoadSettings: Version mismatch (%d != %d).  Restoring from dict.", version, settings.version);
   bool restored = prv_restore_from_settings_dict();
-  APP_LOG(APP_LOG_LEVEL_INFO, "LoadSettings: version mismatch, restore from dict (success=%d)", restored);
+  APP_LOG(APP_LOG_LEVEL_INFO, "LoadSettings: Restore from dict (success=%d)", restored);
   prv_save_settings();
 }
 
@@ -313,7 +315,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     // We shouldn't see this except in test/emulation environments.
     persist_write_data(SETTINGS_DICT_SIZE_KEY, &size, sizeof(size));
     persist_write_data_multi(SETTINGS_DICT_KEY, iter->dictionary, size, SETTINGS_DICT_MAX_BLOCKS);
-    //APP_LOG(APP_LOG_LEVEL_INFO, "Write settings dict size=%u", size);
+    APP_LOG(APP_LOG_LEVEL_INFO, "Write settings dict size=%u", size);
   }
 }
 
@@ -552,6 +554,9 @@ static bool prv_parse_settings_dict(DictionaryIterator *iter) {
       case EMSGKEY_CalendarPinColor:
         settings_changed |= prv_set_color(tuple, &settings.CalendarPinColor);
         break;
+      case EMSGKEY_CalendarEndPinColor:
+        settings_changed |= prv_set_color(tuple, &settings.CalendarEndPinColor);
+        break;
 
       default:
         break;
@@ -607,14 +612,16 @@ static bool prv_parse_settings_dict(DictionaryIterator *iter) {
     settings_changed = true;
   }
 
-  // Recalculate in case we need to switch from hour to minute hand
-  hand_angle_native = calculate_hand_angle(prv_tick_time);
+  if (s_window) {
+    // Recalculate in case we need to switch from hour to minute hand
+    hand_angle_native = calculate_hand_angle(prv_tick_time);
 
-  if (settings_changed) {
-    layer_mark_dirty(s_bg_layer);
-    layer_mark_dirty(s_canvas_layer);
-    layer_mark_dirty(s_date_battery_logo_layer);
-    layer_mark_dirty(s_alarm_cal_pin_layer);
+    if (settings_changed) {
+      layer_mark_dirty(s_bg_layer);
+      layer_mark_dirty(s_canvas_layer);
+      layer_mark_dirty(s_date_battery_logo_layer);
+      layer_mark_dirty(s_alarm_cal_pin_layer);
+    }
   }
 
   prv_save_settings();
@@ -871,13 +878,13 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
     bool draw_start = (event.start_epoch - now) < timeThresholdSec;
     bool draw_end = !single_point && (event.end_epoch - now) < timeThresholdSec;
     bool draw_arc = !single_point && ((time_t)event.start_epoch < thresholdTime) && ((time_t)event.end_epoch >= now);
-    APP_LOG(APP_LOG_LEVEL_INFO, "drawcalendar: start %d, end %d, arc %d", draw_start, draw_end, draw_arc);
+    //APP_LOG(APP_LOG_LEVEL_INFO, "drawcalendar: start %d, end %d, arc %d", draw_start, draw_end, draw_arc);
 
     if (draw_arc) {
       time_t start_t = ((time_t)event.start_epoch > now) ? (time_t)event.start_epoch : now;
       time_t end_t = ((time_t)event.end_epoch < thresholdTime) ? (time_t)event.end_epoch : thresholdTime;
 
-      APP_LOG(APP_LOG_LEVEL_INFO, "drawcalendar: start_t %d, end_t %d", start_t, end_t);
+      //APP_LOG(APP_LOG_LEVEL_INFO, "drawcalendar: start_t %d, end_t %d", start_t, end_t);
 
       struct tm *event_tm = localtime(&start_t);
       int start_hr = event_tm->tm_hour;
@@ -900,7 +907,7 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
       if (diff < timeThresholdSec) {
         time_t t = (time_t)event.end_epoch;
         struct tm *event_tm = localtime(&t);
-        draw_event_pin(ctx, event_tm->tm_hour, event_tm->tm_min, 0, settings.CalendarPinColor);
+        draw_event_pin(ctx, event_tm->tm_hour, event_tm->tm_min, 0, settings.CalendarEndPinColor);
       }
     }
 

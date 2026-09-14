@@ -464,6 +464,14 @@ module.exports = [
         "type": "color",
         "label": "Calendar Pin Colour",
         "messageKey": "CalendarPinColor",
+        "description": "Colour for the event start pin and the arc between pins",
+        "defaultValue": "0055FF",
+      },
+      {
+        "type": "color",
+        "label": "Calendar End Pin Colour",
+        "messageKey": "CalendarEndPinColor",
+        "description": "Colour for the event end pin",
         "defaultValue": "0055FF",
       }
     ]

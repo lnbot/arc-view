@@ -1,5 +1,5 @@
 const BuiltinThemes = {
-  version: 2,
+  version: 3,
   themes: {
     blue: {
       name: "Blue-gray background",
@@ -22,6 +22,7 @@ const BuiltinThemes = {
       LocalAlarmPinColor: "ScreaminGreen",
       SyncedAlarmPinColor: "BrilliantRose",
       CalendarPinColor: "ChromeYellow",
+      CalendarEndPinColor: "ChromeYellow",
     },
     white: {
       name: "White Background",
@@ -43,6 +44,7 @@ const BuiltinThemes = {
       LocalAlarmPinColor: "ScreaminGreen",
       SyncedAlarmPinColor: "BulgarianRose",
       CalendarPinColor: "WindsorTan",
+      CalendarEndPinColor: "WindsorTan",
       WatchDialWindowColor: "ElectricBlue",
     },
     barewhite: {
@@ -65,6 +67,7 @@ const BuiltinThemes = {
       LocalAlarmPinColor: "DukeBlue",
       SyncedAlarmPinColor: "DarkCandyAppleRed",
       CalendarPinColor: "MidnightGreen",
+      CalendarEndPinColor: "MidnightGreen",
       WatchDialWindowColor: "White",
     },
     green: {
@@ -88,6 +91,7 @@ const BuiltinThemes = {
       LocalAlarmPinColor: "ScreaminGreen",
       SyncedAlarmPinColor: "BrilliantRose",
       CalendarPinColor: "ChromeYellow",
+      CalendarEndPinColor: "ChromeYellow",
     },
   }
 };

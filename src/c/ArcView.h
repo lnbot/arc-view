@@ -2,7 +2,7 @@
 #include <pebble.h>
 #include "persist_keys.h"
 
-#define SETTINGS_VERSION 1
+#define SETTINGS_VERSION 2
 
 // Increment SETTINGS_VERSION when reordering or removing any members.
 // Do not change SETTINGS_VERSION if just adding new members to the end
@@ -39,6 +39,7 @@ typedef struct ClaySettings {
   GColor MinimizedMajorTickColor;
   GColor ComplicationBackgroundColor;
   GColor LocalAlarmPinColor;
+  GColor CalendarEndPinColor;
 
   char LogoText[18];
   bool EnableDate;
