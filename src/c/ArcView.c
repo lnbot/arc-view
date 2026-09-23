@@ -163,6 +163,7 @@ static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx);
 static int calculate_hand_angle(struct tm *tick_time);
 static void draw_line_hand(GContext *ctx, int angle, int length, int back_length, GColor color);
 static void draw_hand_center(GContext *ctx, GColor outer_color, GColor inner_color);
+static void draw_radial_line(GContext *ctx, int angle_native, int length, GColor border_color);
 static void prv_window_load(Window *window);
 static void prv_window_unload(Window *window);
 static void prv_init(void);
@@ -714,8 +715,12 @@ static void draw_line_hand(GContext *ctx, int angle, int length, int back_length
   graphics_draw_line(ctx, GPoint(p3.x, p3.y), GPoint(p4.x, p4.y));
 
   GPoint origin_back_offset = GPoint(p1.x + config.hands_shadow, p1.y + config.hands_shadow);
-  graphics_fill_circle(ctx, origin_back_offset, settings.BackSize);
-  graphics_fill_circle(ctx, origin_offset, settings.CentreSize); //started as 4
+
+  if (settings.BackSize > 0)
+    graphics_fill_circle(ctx, origin_back_offset, settings.BackSize);
+
+  if (settings.CentreSize > 0)
+    graphics_fill_circle(ctx, origin_offset, settings.CentreSize);
 
   // Now draw the main hand on top
   graphics_context_set_stroke_color(ctx, color);
@@ -724,8 +729,9 @@ static void draw_line_hand(GContext *ctx, int angle, int length, int back_length
 
   graphics_context_set_fill_color(ctx, color);
   GPoint origin_back = GPoint(p1.x, p1.y);
-  graphics_fill_circle(ctx, origin_back, settings.BackSize);
 
+  if (settings.BackSize > 0)
+    graphics_fill_circle(ctx, origin_back, settings.BackSize);
 }
 
 static void draw_hand_center(GContext *ctx, GColor outer_color, GColor inner_color) {
@@ -808,18 +814,28 @@ static void draw_event_arc(GContext *ctx, int hour1, int minute1, int second1, i
   if (arc_end_angle <= arc_start_angle)
     arc_end_angle += TRIG_MAX_ANGLE;
 
-  // Bigger bounding box to sure we draw all pixels around the edge of the screen
-  GRect arc_bounds = GRect(arc_width - 1, arc_width - 1, bounds.size.w - 2 * arc_width + 2, bounds.size.h - 2 * arc_width + 2);
+  GRect arc_bounds = GRect(arc_width, arc_width, bounds.size.w - 2 * arc_width, bounds.size.h - 2 * arc_width);
+  GColor border_color = get_contrasting_color(color);
 
   // Draw a filled arc, then a line of a contrasting color
   graphics_context_set_antialiased(ctx, true);
   graphics_context_set_fill_color(ctx, color);
-  graphics_context_set_stroke_color(ctx, get_contrasting_color(color));
-  graphics_context_set_stroke_width(ctx, 1);
+  graphics_context_set_stroke_color(ctx, color);
+  graphics_context_set_stroke_width(ctx, 2);
 
-  // Extra arc width because of extra bounding box size
-  graphics_fill_radial(ctx, bounds, GOvalScaleModeFillCircle, arc_width + 1, arc_start_angle, arc_end_angle);
+  // Fill radial doesn't fill in all of the edge pixels on a round screen so also draw a thick arc
+  graphics_fill_radial(ctx, bounds, GOvalScaleModeFillCircle, arc_width, arc_start_angle, arc_end_angle);
+  graphics_draw_arc(ctx, bounds, GOvalScaleModeFillCircle, arc_start_angle, arc_end_angle);
+
+  // Draw contrasting borders for this arc where appropriate
+  graphics_context_set_stroke_color(ctx, border_color);
+  graphics_context_set_stroke_width(ctx, 2);
   graphics_draw_arc(ctx, arc_bounds, GOvalScaleModeFillCircle, arc_start_angle, arc_end_angle);
+
+  if (arc_start_angle != hand_angle_native)
+    draw_radial_line(ctx, arc_start_angle, arc_width + 1, border_color);
+  if (arc_end_angle != hand_angle_native)
+    draw_radial_line(ctx, arc_end_angle, arc_width + 1, border_color);
 }
 
 static void layer_update_proc_alarm_cal_pins(Layer *layer, GContext *ctx) {
